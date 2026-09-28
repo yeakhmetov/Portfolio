@@ -161,6 +161,20 @@
     eq(sum.byKey(function (r) { return r.currency; }).USD, M('110000'));
   });
 
+  test('Счёт без пополнений: покупки не уводят стоимость портфеля в минус', function () {
+    var txs = [
+      { accountId: 'A', assetId: 'KCEL', type: 'buy', date: '2024-06-02', quantity: Q('10'), amount: M('20000'), fee: M('20'), currency: 'KZT' },
+      { accountId: 'A', assetId: 'KCEL', type: 'dividend', date: '2024-06-03', amount: M('500'), tax: M('25'), currency: 'KZT' }
+    ];
+    var st = C.computePortfolio(txs);
+    var sum = C.summarize(st, { assets: {}, prices: { KCEL: { price: 2000 } }, fx: fx, base: 'KZT', date: '2024-07-01', accounts: { A: {} } });
+    eq(sum.cash, 0, 'отрицательный остаток не учитывается');
+    eq(sum.total, M('20000'), 'стоимость = бумаги');
+    var flows = C.investorFlows(txs, sum, { fx: fx, base: 'KZT', date: '2024-07-01', cash: st.cash });
+    var contributed = -flows.slice(0, -1).reduce(function (s, f) { return s + f.amount; }, 0);
+    eq(contributed, M('19545'), 'вложено: покупка с комиссией минус дивиденд');
+  });
+
   /* ---------- XIRR ---------- */
 
   test('XIRR: ровно год, +10 %', function () {
@@ -217,6 +231,109 @@
     eq(r.buys.bond + r.buys.cash, 100000, 'распределено всё');
     eq(r.buys.stock, undefined);
     eq(r.buys.bond, Math.floor(40000 * 100000 / 260000));
+  });
+
+  /* ---------- импорт и экспорт ---------- */
+
+  test('parseCSV: разделитель, кавычки, BOM, CRLF', function () {
+    var r = C.parseCSV('﻿Дата;Заметка;Сумма\r\n2024-01-02;"Текст; с ""кавычками""";1 000,50\r\n\r\n');
+    eq(r.delimiter, ';');
+    eq(r.rows.length, 2, 'пустые строки пропускаются');
+    eq(r.rows[1][1], 'Текст; с "кавычками"');
+    eq(r.rows[1][2], '1 000,50');
+    eq(C.parseCSV('a,b\n1,2').delimiter, ',');
+  });
+
+  test('parseDateAny: разные форматы и неверные даты', function () {
+    eq(C.parseDateAny('2024-03-05'), '2024-03-05');
+    eq(C.parseDateAny('05.03.2024'), '2024-03-05');
+    eq(C.parseDateAny('5/3/24'), '2024-03-05');
+    eq(C.parseDateAny('2024-03-05T10:20:00Z'), '2024-03-05');
+    eq(C.parseDateAny('31.02.2024'), null, '31 февраля');
+    eq(C.parseDateAny('вчера'), null);
+  });
+
+  test('Распознавание типов операций и колонок', function () {
+    eq(C.detectType('Покупка'), 'buy');
+    eq(C.detectType('SELL'), 'sell');
+    eq(C.detectType('Дивиденды'), 'dividend');
+    eq(C.detectType('Купонный доход'), 'coupon');
+    eq(C.detectType('что-то'), null);
+    var m = C.guessMapping(['Дата сделки', 'Операция', 'Тикер', 'Кол-во', 'Цена', 'Комиссия', 'Валюта']);
+    eq(m.date, 0); eq(m.type, 1); eq(m.ticker, 2); eq(m.quantity, 3); eq(m.price, 4); eq(m.fee, 5); eq(m.currency, 6);
+    eq(m.amount, undefined);
+  });
+
+  test('csvToTxs: сумма из цены, новый актив, ошибки по строкам', function () {
+    var p = C.parseCSV('Дата;Тип;Тикер;Количество;Цена;Комиссия\n10.01.2024;Покупка;kcel;10;2 000,5;15\n11.01.2024;Непонятно;KCEL;1;1;0\n12.01.2024;Продажа;KCEL;;2100;0');
+    var map = C.guessMapping(p.rows[0]);
+    var res = C.csvToTxs(p.rows.slice(1), map, { accounts: [{ id: 'A', name: 'Freedom' }], assets: [], defaultAccountId: 'A', defaultCurrency: 'KZT' });
+    eq(res.txs.length, 1, 'одна корректная строка');
+    eq(res.errors.length, 2);
+    eq(res.errors[0].row, 2); eq(res.errors[1].row, 3);
+    eq(res.newAssets.length, 1); eq(res.newAssets[0].ticker, 'KCEL');
+    var t = res.txs[0];
+    eq(t.amount, M('20005')); eq(t.fee, M('15')); eq(t.quantity, Q('10')); eq(t.assetId, res.newAssets[0].id);
+  });
+
+  function scenarioData() {
+    return {
+      accounts: [{ id: 'A', name: 'Freedom', currency: 'KZT' }, { id: 'B', name: 'Halyk', currency: 'KZT' }],
+      assets: [{ id: 'KCEL', ticker: 'KCEL', name: 'Kcell', class: 'stock', currency: 'KZT' }],
+      txs: scenario().concat([
+        { id: 't', accountId: 'A', toAccountId: 'B', assetId: 'KCEL', type: 'transfer', date: '2024-09-01', quantity: Q('2'), currency: 'KZT', note: 'на ИИС; тест' }
+      ]),
+      prices: { KCEL: [{ date: '2024-09-01', price: 1300, source: 'manual' }] }, fx: [], targets: { stock: 100 }, settings: { baseCurrency: 'KZT' }, seq: 7
+    };
+  }
+
+  test('Экспорт CSV → импорт CSV даёт тот же портфель', function () {
+    var data = scenarioData();
+    var csv = C.txsToCSV(data);
+    var p = C.parseCSV(csv);
+    eq(p.rows.length, data.txs.length + 1, 'заголовок + операции');
+    var res = C.csvToTxs(p.rows.slice(1), C.guessMapping(p.rows[0]), { accounts: data.accounts, assets: data.assets, defaultAccountId: 'A' });
+    eq(res.errors.length, 0, 'ошибок импорта' + (res.errors[0] ? ': ' + res.errors[0].message : ''));
+    var a = C.computePortfolio(data.txs), b = C.computePortfolio(res.txs);
+    ['A|KCEL', 'B|KCEL'].forEach(function (k) {
+      ['qty', 'cost', 'realized', 'income'].forEach(function (f) { eq(b.positions[k][f], a.positions[k][f], k + ' ' + f); });
+    });
+    eq(JSON.stringify(b.cash), JSON.stringify(a.cash), 'деньги');
+    eq(res.txs[6].note, 'на ИИС; тест', 'заметка с разделителем');
+  });
+
+  test('Резервная копия JSON: сохранение и восстановление без потерь', function () {
+    var data = scenarioData();
+    var back = JSON.parse(JSON.stringify(C.makeBackup(data, '2024-10-01T00:00:00Z')));
+    var v = C.validateBackup(back);
+    eq(v.ok, true, v.error);
+    eq(v.counts.txs, 7);
+    eq(JSON.stringify(v.data), JSON.stringify(C.makeBackup(data).data), 'данные совпадают');
+  });
+
+  test('Резервная копия: повреждённые файлы отклоняются', function () {
+    eq(C.validateBackup(null).ok, false);
+    eq(C.validateBackup({ app: 'rashody', data: {} }).ok, false, 'чужое приложение');
+    eq(C.validateBackup({ app: 'portfolio', version: 2, data: {} }).ok, false, 'новая версия');
+    var bad = C.makeBackup(scenarioData());
+    bad.data.txs[1].amount = 12.5;
+    eq(C.validateBackup(bad).ok, false, 'дробная сумма');
+  });
+
+  test('Объединение: дубликаты пропускаются, одинаковые тикеры склеиваются', function () {
+    var cur = scenarioData();
+    var inc = {
+      accounts: [{ id: 'A', name: 'Freedom' }],
+      assets: [{ id: 'other-kcel', ticker: 'kcel', name: 'Kcell' }, { id: 'HSBK', ticker: 'HSBK', name: 'Halyk' }],
+      txs: [cur.txs[1], { id: 'n1', accountId: 'A', assetId: 'other-kcel', type: 'buy', date: '2024-10-01', quantity: Q('1'), amount: 100, currency: 'KZT', seq: 1 }],
+      prices: { 'other-kcel': [{ date: '2024-09-01', price: 1 }, { date: '2024-10-01', price: 1400 }] }
+    };
+    var r = C.mergeData(cur, inc);
+    eq(r.skipped, 1); eq(r.added.txs, 1); eq(r.added.assets, 1); eq(r.added.accounts, 0);
+    var n1 = r.data.txs.find(function (t) { return t.id === 'n1'; });
+    eq(n1.assetId, 'KCEL', 'ссылка на существующий актив');
+    eq(n1.seq, 8, 'порядок после существующих');
+    eq(r.data.prices.KCEL.length, 2); eq(r.data.prices.KCEL[0].price, 1300, 'своя цена на ту же дату не перезаписана');
   });
 
   /* ---------- вывод ---------- */

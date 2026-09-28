@@ -189,6 +189,13 @@
       .map(function (x) { return x.t; });
   }
 
+  // счета, по которым ведётся учёт денег: есть пополнения или выводы
+  function fundedAccounts(txs) {
+    var m = {};
+    txs.forEach(function (t) { if (t.type === 'deposit' || t.type === 'withdraw') m[t.accountId] = true; });
+    return m;
+  }
+
   function posKey(accountId, assetId) { return accountId + '|' + assetId; }
 
   /*
@@ -205,6 +212,7 @@
     var method = opts.method === 'avg' ? 'avg' : 'fifo';
     var positions = {};
     var cash = {};
+    var funded = fundedAccounts(txs);
     var errors = [];
 
     function pos(accountId, assetId, cur) {
@@ -335,7 +343,7 @@
       }
     });
 
-    return { positions: positions, cash: cash, errors: errors };
+    return { positions: positions, cash: cash, funded: funded, errors: errors };
   }
 
   /* ---------- оценка ---------- */
@@ -390,6 +398,9 @@
       var acc = accounts[accId];
       if (acc && acc.archived) return;
       if (acc && acc.trackCash === false) return;
+      // деньги считаются только на счетах с записанными пополнениями или выводами;
+      // иначе покупки без пополнений уводили бы остаток в минус и занижали стоимость
+      if (state.funded && !state.funded[accId]) return;
       Object.keys(state.cash[accId]).forEach(function (cur) {
         tot.cash += conv(state.cash[accId][cur], cur);
       });
@@ -457,8 +468,7 @@
    */
   function investorFlows(txs, summary, ctx) {
     var fx = ctx.fx, base = ctx.base, date = ctx.date;
-    var depositMode = {};
-    txs.forEach(function (t) { if (t.type === 'deposit' || t.type === 'withdraw') depositMode[t.accountId] = true; });
+    var depositMode = fundedAccounts(txs);
     var flows = [];
     function conv(minor, cur, d) { var v = fx.convert(minor, cur, base, d); return v == null ? 0 : v; }
     txs.forEach(function (t) {
@@ -525,6 +535,289 @@
     return { buys: buys, deviation: deviation };
   }
 
+  /* ---------- импорт и экспорт ---------- */
+
+  // CSV → массив строк; разделитель (; , или таб) определяется по первой строке
+  function parseCSV(text) {
+    text = String(text || '').replace(/^﻿/, '');
+    var first = text.split(/\r?\n/)[0] || '';
+    var counts = { ';': 0, ',': 0, '\t': 0 }, inQ = false;
+    for (var i = 0; i < first.length; i++) {
+      var ch = first[i];
+      if (ch === '"') inQ = !inQ;
+      else if (!inQ && ch in counts) counts[ch]++;
+    }
+    var delim = ';';
+    if (counts['\t'] > counts[delim]) delim = '\t';
+    if (counts[','] > counts[delim]) delim = ',';
+    var rows = [], row = [], cell = '', q = false;
+    for (var j = 0; j < text.length; j++) {
+      var c = text[j];
+      if (q) {
+        if (c === '"') { if (text[j + 1] === '"') { cell += '"'; j++; } else q = false; }
+        else cell += c;
+      } else if (c === '"') q = true;
+      else if (c === delim) { row.push(cell); cell = ''; }
+      else if (c === '\n' || c === '\r') {
+        if (c === '\r' && text[j + 1] === '\n') j++;
+        row.push(cell); cell = '';
+        if (row.some(function (x) { return x.trim() !== ''; })) rows.push(row);
+        row = [];
+      } else cell += c;
+    }
+    row.push(cell);
+    if (row.some(function (x) { return x.trim() !== ''; })) rows.push(row);
+    return { rows: rows, delimiter: delim };
+  }
+
+  function csvCell(v) {
+    v = v == null ? '' : String(v);
+    return /[";\n\r]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v;
+  }
+
+  // 'YYYY-MM-DD', 'DD.MM.YYYY', 'DD/MM/YYYY', 'DD.MM.YY', ISO с временем → 'YYYY-MM-DD' или null
+  function parseDateAny(s) {
+    s = String(s || '').trim();
+    var m, y, mo, d;
+    if ((m = /^(\d{4})-(\d{1,2})-(\d{1,2})/.exec(s))) { y = +m[1]; mo = +m[2]; d = +m[3]; }
+    else if ((m = /^(\d{1,2})[./](\d{1,2})[./](\d{2,4})/.exec(s))) { d = +m[1]; mo = +m[2]; y = +m[3]; if (y < 100) y += 2000; }
+    else return null;
+    var t = new Date(Date.UTC(y, mo - 1, d));
+    if (t.getUTCFullYear() !== y || t.getUTCMonth() !== mo - 1 || t.getUTCDate() !== d) return null;
+    return t.toISOString().slice(0, 10);
+  }
+
+  var TYPE_ALIASES = {
+    buy: ['buy', 'b', 'покупка', 'купля', 'куплено', 'купил'],
+    sell: ['sell', 's', 'продажа', 'продано', 'продал'],
+    dividend: ['dividend', 'dividends', 'div', 'дивиденд', 'дивиденды'],
+    coupon: ['coupon', 'купон', 'купоны', 'купонный доход'],
+    deposit: ['deposit', 'пополнение', 'ввод', 'зачисление', 'ввод денег'],
+    withdraw: ['withdraw', 'withdrawal', 'вывод', 'снятие', 'вывод денег'],
+    fee: ['fee', 'commission', 'комиссия'],
+    tax: ['tax', 'налог'],
+    split: ['split', 'сплит'],
+    transfer: ['transfer', 'перевод']
+  };
+  function detectType(s) {
+    s = String(s || '').trim().toLowerCase().replace(/ё/g, 'е');
+    if (!s) return null;
+    var keys = Object.keys(TYPE_ALIASES), k, i;
+    for (k = 0; k < keys.length; k++) if (TYPE_ALIASES[keys[k]].some(function (a) { return a.replace(/ё/g, 'е') === s; })) return keys[k];
+    for (k = 0; k < keys.length; k++) {
+      var al = TYPE_ALIASES[keys[k]];
+      for (i = 0; i < al.length; i++) if (al[i].length > 2 && s.indexOf(al[i].replace(/ё/g, 'е')) === 0) return keys[k];
+    }
+    return null;
+  }
+
+  var CSV_FIELDS = {
+    date: ['date', 'дата', 'дата сделки', 'дата операции', 'trade date'],
+    type: ['type', 'тип', 'операция', 'вид операции', 'тип операции', 'side'],
+    ticker: ['ticker', 'тикер', 'symbol', 'инструмент', 'бумага', 'код'],
+    name: ['name', 'название', 'наименование'],
+    quantity: ['quantity', 'qty', 'количество', 'кол-во', 'кол во', 'шт'],
+    price: ['price', 'цена'],
+    amount: ['amount', 'сумма', 'объем', 'объём', 'total'],
+    fee: ['fee', 'комиссия', 'commission'],
+    tax: ['tax', 'налог'],
+    currency: ['currency', 'валюта', 'cur'],
+    account: ['account', 'счет', 'счёт'],
+    toAccount: ['to account', 'куда', 'счет получателя', 'счёт получателя'],
+    ratio: ['ratio', 'коэффициент'],
+    note: ['note', 'comment', 'комментарий', 'заметка', 'примечание']
+  };
+  function guessMapping(headers) {
+    var norm = headers.map(function (h) { return String(h || '').trim().toLowerCase().replace(/ё/g, 'е'); });
+    var map = {};
+    Object.keys(CSV_FIELDS).forEach(function (f) {
+      var al = CSV_FIELDS[f].map(function (a) { return a.replace(/ё/g, 'е'); });
+      var idx = norm.findIndex(function (h) { return al.indexOf(h) >= 0; });
+      if (idx < 0) idx = norm.findIndex(function (h) { return al.some(function (a) { return a.length > 3 && h.indexOf(a) === 0; }); });
+      if (idx >= 0 && Object.keys(map).every(function (k) { return map[k] !== idx; })) map[f] = idx;
+    });
+    return map;
+  }
+
+  /*
+   * Строки CSV (без заголовка) → операции.
+   * opts: { accounts, assets, defaultAccountId, defaultCurrency, seqStart, uid }
+   * Возвращает { txs, newAssets, errors: [{row, message}] }
+   */
+  function csvToTxs(rows, map, opts) {
+    var accounts = opts.accounts || [], assets = (opts.assets || []).slice(), newAssets = [];
+    var txs = [], errors = [], seq = opts.seqStart || 0, mk = opts.uid || uid;
+    function get(r, f) { return map[f] != null && map[f] >= 0 ? String(r[map[f]] == null ? '' : r[map[f]]).trim() : ''; }
+    function findAccount(name) {
+      if (!name) return null;
+      var n = name.toLowerCase();
+      var a = accounts.find(function (x) { return x.name.toLowerCase() === n || x.id === name; });
+      return a ? a.id : null;
+    }
+    function absNum(s, dec) { var v = parseDecimal(String(s).replace(/^[−–]/, '-'), dec); return v == null ? null : Math.abs(v); }
+    rows.forEach(function (r, i) {
+      var line = i + 1;
+      var fail = function (m) { errors.push({ row: line, message: m }); };
+      var date = parseDateAny(get(r, 'date'));
+      if (!date) return fail('Не распознана дата «' + get(r, 'date') + '»');
+      var type = detectType(get(r, 'type'));
+      if (!type) return fail('Не распознан тип операции «' + get(r, 'type') + '»');
+      var accountId = findAccount(get(r, 'account')) || opts.defaultAccountId;
+      if (!accountId) return fail('Не найден счёт');
+      var ticker = get(r, 'ticker').toUpperCase();
+      var asset = null;
+      if (ticker) {
+        asset = assets.find(function (a) { return a.ticker.toUpperCase() === ticker; });
+        if (!asset) {
+          var cur0 = get(r, 'currency').toUpperCase() || opts.defaultCurrency || 'KZT';
+          asset = { id: mk(), ticker: ticker, name: get(r, 'name') || ticker, class: 'stock', currency: cur0, exchange: 'KASE' };
+          assets.push(asset); newAssets.push(asset);
+        }
+      }
+      var needAsset = ['buy', 'sell', 'dividend', 'coupon', 'split'].indexOf(type) >= 0;
+      if (needAsset && !asset) return fail('Не указан тикер');
+      var cur = (asset && asset.currency) || get(r, 'currency').toUpperCase() || opts.defaultCurrency || 'KZT';
+      var t = { id: mk(), seq: ++seq, type: type, date: date, accountId: accountId, currency: cur };
+      if (asset && (needAsset || type === 'fee' || type === 'tax' || type === 'transfer')) t.assetId = asset.id;
+      var note = get(r, 'note'); if (note) t.note = note;
+      var qty = absNum(get(r, 'quantity'), QTY_DECIMALS);
+      var priceStr = get(r, 'price').replace(/[\s ]/g, '').replace(',', '.');
+      var price = priceStr ? Math.abs(Number(priceStr)) : null;
+      var amount = absNum(get(r, 'amount'), currencyDigits(cur));
+      if (type === 'buy' || type === 'sell' || (type === 'transfer' && asset)) {
+        if (!(qty > 0)) return fail('Не указано количество');
+        t.quantity = qty;
+      }
+      if (type === 'buy' || type === 'sell') {
+        if (price > 0) t.price = price;
+        if (!(amount > 0)) {
+          if (!(price > 0)) return fail('Нужна цена или сумма');
+          amount = calcAmount(qty, price, cur, asset);
+        }
+      }
+      if (type === 'split') {
+        var m = /^(\d+)\s*[:/]\s*(\d+)$/.exec(get(r, 'ratio'));
+        if (!m) return fail('Не указан коэффициент сплита, например 2:1');
+        t.ratio = { num: +m[1], den: +m[2] };
+      } else if (!(type === 'transfer' && asset)) {
+        if (!(amount > 0)) return fail('Не указана сумма');
+        t.amount = amount;
+      }
+      var fee = absNum(get(r, 'fee'), currencyDigits(cur)); if (fee) t.fee = fee;
+      var tax = absNum(get(r, 'tax'), currencyDigits(cur)); if (tax) t.tax = tax;
+      if (type === 'transfer') {
+        t.toAccountId = findAccount(get(r, 'toAccount'));
+        if (!t.toAccountId) return fail('Не найден счёт получателя');
+      }
+      txs.push(t);
+    });
+    return { txs: txs, newAssets: newAssets, errors: errors };
+  }
+
+  var TYPE_RU = { buy: 'Покупка', sell: 'Продажа', dividend: 'Дивиденд', coupon: 'Купон', deposit: 'Пополнение', withdraw: 'Вывод',
+    fee: 'Комиссия', tax: 'Налог', split: 'Сплит', transfer: 'Перевод' };
+
+  // операции → CSV (разделитель «;», десятичная запятая — открывается в Excel с русской локалью)
+  function txsToCSV(data) {
+    var acc = {}, as = {};
+    (data.accounts || []).forEach(function (a) { acc[a.id] = a; });
+    (data.assets || []).forEach(function (a) { as[a.id] = a; });
+    var dec = function (s) { return String(s).replace('.', ','); };
+    var head = ['Дата', 'Тип', 'Счёт', 'Тикер', 'Название', 'Количество', 'Цена', 'Сумма', 'Комиссия', 'Налог', 'Валюта', 'Счёт получателя', 'Коэффициент', 'Заметка'];
+    var lines = [head.join(';')];
+    sortTxs(data.txs || []).forEach(function (t) {
+      var a = as[t.assetId], d = currencyDigits(t.currency);
+      lines.push([
+        t.date, TYPE_RU[t.type] || t.type, acc[t.accountId] ? acc[t.accountId].name : t.accountId,
+        a ? a.ticker : '', a ? a.name : '',
+        t.quantity ? dec(formatDecimal(t.quantity, QTY_DECIMALS, false)) : '',
+        t.price != null ? dec(t.price) : '',
+        t.amount ? dec(formatDecimal(t.amount, d, true)) : '',
+        t.fee ? dec(formatDecimal(t.fee, d, true)) : '',
+        t.tax ? dec(formatDecimal(t.tax, d, true)) : '',
+        t.currency, t.toAccountId && acc[t.toAccountId] ? acc[t.toAccountId].name : '',
+        t.ratio ? t.ratio.num + ':' + t.ratio.den : '', t.note || ''
+      ].map(csvCell).join(';'));
+    });
+    return '﻿' + lines.join('\r\n') + '\r\n';
+  }
+
+  var BACKUP_KEYS = ['accounts', 'assets', 'txs', 'prices', 'fx', 'targets', 'settings', 'seq'];
+
+  function makeBackup(data, now) {
+    var out = {};
+    BACKUP_KEYS.forEach(function (k) { out[k] = data[k]; });
+    return { app: 'portfolio', version: 1, exportedAt: now || new Date().toISOString(), data: out };
+  }
+
+  // проверка резервной копии: { ok, error?, data?, counts? }
+  function validateBackup(obj) {
+    if (!obj || typeof obj !== 'object') return { ok: false, error: 'Файл не похож на резервную копию' };
+    if (obj.app !== 'portfolio' || !obj.data) return { ok: false, error: 'Это не резервная копия приложения «Портфель»' };
+    if (!(obj.version <= 1)) return { ok: false, error: 'Копия создана более новой версией приложения — обновите приложение' };
+    var d = obj.data;
+    var arr = ['accounts', 'assets', 'txs', 'fx'];
+    for (var i = 0; i < arr.length; i++) if (d[arr[i]] != null && !Array.isArray(d[arr[i]])) return { ok: false, error: 'Повреждён раздел ' + arr[i] };
+    var txs = d.txs || [];
+    for (var j = 0; j < txs.length; j++) {
+      var t = txs[j];
+      if (!t || !t.id || TYPES.indexOf(t.type) < 0 || !parseDateAny(t.date) || !t.accountId || !t.currency)
+        return { ok: false, error: 'Повреждена операция №' + (j + 1) };
+      var ints = ['quantity', 'amount', 'fee', 'tax'];
+      for (var k = 0; k < ints.length; k++) if (t[ints[k]] != null && !Number.isInteger(t[ints[k]]))
+        return { ok: false, error: 'Операция №' + (j + 1) + ': неверное поле ' + ints[k] };
+    }
+    var ok = function (list) { return (list || []).every(function (x) { return x && x.id; }); };
+    if (!ok(d.accounts) || !ok(d.assets)) return { ok: false, error: 'Повреждены счета или активы' };
+    return { ok: true, data: d, counts: { accounts: (d.accounts || []).length, assets: (d.assets || []).length, txs: txs.length } };
+  }
+
+  /*
+   * Объединение данных: новые записи добавляются, существующие (тот же id) не трогаются.
+   * Активы с тем же тикером считаются одним активом — ссылки на них переназначаются.
+   */
+  function mergeData(cur, inc) {
+    var out = {
+      accounts: (cur.accounts || []).slice(), assets: (cur.assets || []).slice(), txs: (cur.txs || []).slice(),
+      prices: Object.assign({}, cur.prices || {}), fx: (cur.fx || []).slice(),
+      targets: cur.targets, settings: cur.settings, seq: cur.seq || 0
+    };
+    var added = { accounts: 0, assets: 0, txs: 0 }, skipped = 0;
+    var accIds = {}, assetIds = {}, tickers = {}, txIds = {};
+    out.accounts.forEach(function (a) { accIds[a.id] = true; });
+    out.assets.forEach(function (a) { assetIds[a.id] = a.id; tickers[a.ticker.toUpperCase()] = a.id; });
+    out.txs.forEach(function (t) { txIds[t.id] = true; });
+    var remap = {};
+    (inc.accounts || []).forEach(function (a) { if (!accIds[a.id]) { out.accounts.push(a); accIds[a.id] = true; added.accounts++; } });
+    (inc.assets || []).forEach(function (a) {
+      var same = tickers[a.ticker.toUpperCase()];
+      if (assetIds[a.id]) return;
+      if (same) { remap[a.id] = same; return; }
+      out.assets.push(a); assetIds[a.id] = a.id; tickers[a.ticker.toUpperCase()] = a.id; added.assets++;
+    });
+    var seqBase = out.seq;
+    (inc.txs || []).forEach(function (t) {
+      if (txIds[t.id]) { skipped++; return; }
+      var c = Object.assign({}, t);
+      if (c.assetId && remap[c.assetId]) c.assetId = remap[c.assetId];
+      c.seq = seqBase + (t.seq || 0);
+      out.txs.push(c); txIds[c.id] = true; added.txs++;
+      if (c.seq > out.seq) out.seq = c.seq;
+    });
+    Object.keys(inc.prices || {}).forEach(function (id) {
+      var target = remap[id] || id;
+      var list = (out.prices[target] || []).slice();
+      var dates = {}; list.forEach(function (p) { dates[p.date] = true; });
+      inc.prices[id].forEach(function (p) { if (!dates[p.date]) list.push(p); });
+      list.sort(function (a, b) { return a.date < b.date ? -1 : a.date > b.date ? 1 : 0; });
+      out.prices[target] = list;
+    });
+    var fxKeys = {};
+    out.fx.forEach(function (r) { fxKeys[r.date + r.base + r.quote] = true; });
+    (inc.fx || []).forEach(function (r) { if (!fxKeys[r.date + r.base + r.quote]) { out.fx.push(r); fxKeys[r.date + r.base + r.quote] = true; } });
+    return { data: out, added: added, skipped: skipped };
+  }
+
   /* ---------- утилиты ---------- */
 
   function uid() {
@@ -560,7 +853,17 @@
     rebalance: rebalance,
     daysBetween: daysBetween,
     uid: uid,
-    today: today
+    today: today,
+    parseCSV: parseCSV,
+    parseDateAny: parseDateAny,
+    detectType: detectType,
+    CSV_FIELDS: CSV_FIELDS,
+    guessMapping: guessMapping,
+    csvToTxs: csvToTxs,
+    txsToCSV: txsToCSV,
+    makeBackup: makeBackup,
+    validateBackup: validateBackup,
+    mergeData: mergeData
   };
 
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
