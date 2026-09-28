@@ -51,6 +51,15 @@ main{max-width:560px;margin:0 auto;padding:4px 14px calc(104px + env(safe-area-i
 header.top{position:sticky;top:0;z-index:5;background:var(--bg);max-width:560px;margin:0 auto;padding:12px 14px 8px;
   display:flex;align-items:center;justify-content:space-between;gap:8px}
 header.top h1{font:700 20px/1.1 var(--display);margin:0;letter-spacing:-.01em}
+header.top .acts{display:flex;gap:2px}
+#refresh.busy svg{animation:spin 1s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.ptr{height:0;overflow:hidden;text-align:center;font-size:13px;color:var(--muted);transition:height .15s}
+.stale{color:var(--down)}
+.checks{list-style:none;margin:8px 0 0;padding:0;font-size:14px}
+.checks li{display:flex;gap:8px;padding:5px 0;border-top:1px solid var(--line)}
+.checks li:first-child{border-top:0}
+.checks b{flex:none;width:18px}
 .iconbtn{width:44px;height:44px;border-radius:12px;border:0;background:transparent;display:grid;place-items:center;color:var(--ink)}
 .iconbtn:active{background:var(--soft)}
 .iconbtn svg{width:22px;height:22px}
@@ -165,10 +174,14 @@ nav.tabs button.on{color:var(--accent);font-weight:600}
 <body>
 <header class="top">
   <h1 id="title">Обзор</h1>
-  <button class="iconbtn" id="eye" aria-label="Скрыть суммы" aria-pressed="false"></button>
+  <div class="acts">
+    <button class="iconbtn" id="refresh" aria-label="Обновить котировки" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12a8 8 0 1 1-2.34-5.66"/><path d="M20 4v5h-5"/></svg></button>
+    <button class="iconbtn" id="eye" aria-label="Скрыть суммы" aria-pressed="false"></button>
+  </div>
 </header>
 
 <main>
+  <div class="ptr" id="ptr" aria-hidden="true">Отпустите, чтобы обновить котировки</div>
   <section class="screen on" id="s-overview"></section>
   <section class="screen" id="s-positions"></section>
   <section class="screen" id="s-ops"></section>
@@ -196,9 +209,11 @@ nav.tabs button.on{color:var(--accent);font-weight:600}
 <input type="file" id="file-csv" accept=".csv,.txt,text/csv,text/plain" hidden>
 <script>try{const t=JSON.parse(localStorage.getItem('portfolio:settings')||'{}').theme;if(t==='light'||t==='dark')document.documentElement.setAttribute('data-theme',t)}catch(_){}</script>
 <script src="core.js"></script>
+<script src="quotes.js"></script>
 <script>
 'use strict';
 const C = window.PortfolioCore;
+const QT = window.PortfolioQuotes;
 
 /* ================= справочники ================= */
 
@@ -230,7 +245,8 @@ const UI = { tab: 'overview', period: '1y', alloc: 'class', posAccount: 'all', p
 
 function emptyState() {
   return { accounts: [], assets: [], txs: [], prices: {}, fx: [], targets: { stock: 40, bond: 25, fund: 20, crypto: 5, cash: 10 },
-    settings: { baseCurrency: 'KZT', theme: 'system', method: 'fifo', hideAmounts: false }, demo: false, seq: 0 };
+    settings: { baseCurrency: 'KZT', theme: 'system', method: 'fifo', hideAmounts: false,
+      autoQuotes: true, quoteRefreshMinutes: 15, proxyUrl: '', proxyToken: '', twelveDataKey: '' }, demo: false, seq: 0 };
 }
 
 function initialState() {
@@ -297,7 +313,7 @@ const Store = (() => {
     } catch (e) { console.error(e); throw e; }
     return null;
   }
-  function saveSettings(st) { try { localStorage.setItem('portfolio:settings', JSON.stringify(st.settings)); } catch (e) { /* нет localStorage */ } }
+  function saveSettings(st) { try { localStorage.setItem('portfolio:settings', JSON.stringify({ theme: st.settings.theme })); } catch (e) { /* нет localStorage */ } }
   let chain = Promise.resolve();
   function save(st) {
     saveSettings(st);
@@ -635,6 +651,8 @@ function allocation(mode) {
 
 function notices() {
   let h = '';
+  const cfg = Quotes.configIssues();
+  if (cfg) h += `<div class="demo-note"><span>${cfg}</span><button data-act="goto-quotes">Настроить</button></div>`;
   if (Store.mode === 'memory') h += `<div class="demo-note" style="background:var(--card);border:1px solid var(--down)"><span><b class="down">Хранилище недоступно.</b> Браузер не даёт сохранять данные (например, в приватном режиме) — после закрытия всё пропадёт. Сохраните копию в разделе «Ещё».</span></div>`;
   const lb = S.settings.lastBackupAt;
   const days = lb ? Math.floor((Date.now() - new Date(lb)) / 86400000) : null;
@@ -741,7 +759,7 @@ function renderPositions() {
       ${rows.length ? `<ul class="list" style="margin-top:6px">${rows.map(r => `
         <li class="item tap" data-asset="${esc(r.assetId)}" data-account="${esc(r.accountId)}" tabindex="0" role="button">
           <div class="badge">${tickerBadge(r.asset)}</div>
-          <div class="main"><div class="t">${esc(r.asset.name)}</div><div class="s num">${C.formatQty(r.qty)} шт · ${esc((d.accounts[r.accountId] || {}).name || '')}${r.hasPrice ? '' : ' · нет цены'}</div></div>
+          <div class="main"><div class="t">${esc(r.asset.name)}</div><div class="s num">${C.formatQty(r.qty)} шт · ${esc((d.accounts[r.accountId] || {}).name || '')}${r.hasPrice ? (r.price.source !== 'demo' && QT.isStale(r.asset, r.price, Date.now()) ? ' · <span class="stale">цена устарела</span>' : '') : ' · нет цены'}</div></div>
           <div class="r"><div class="t num">${money(r.valueBase, base, { digits: 0 })}</div><div class="s num ${cls(r.pnl)}">${arrow(r.pnl)}${pct(Math.abs(r.pnlPct || 0))}</div></div>
         </li>`).join('')}</ul>` : '<div class="empty">Нет позиций по выбранным фильтрам</div>'}
     </div>
@@ -773,9 +791,10 @@ function openAsset(assetId, accountId) {
     <div class="card">
       <div class="label">Цена</div>
       <div class="hero num" style="font-size:24px">${pr ? fprice(pr.price, cur, a) : '—'}</div>
-      <div class="label">${pr ? esc(sourceLabel(pr.source)) + ' · ' + fdate(pr.date, true) : 'Цена не загружена'}</div>
+      <div class="label">${priceMeta(a, pr)}</div>
       <div class="chart" id="asset-chart"></div>
-      <button class="btn block" style="margin-top:10px" data-act="set-price" data-asset="${esc(assetId)}">Указать цену вручную</button>
+      <div class="btn-row" style="margin-top:10px"><button class="btn" data-act="set-price" data-asset="${esc(assetId)}">Цена вручную</button><button class="btn" data-act="edit-asset" data-asset="${esc(assetId)}">Изменить актив</button></div>
+      ${QT.routeFor(a).length ? `<p class="hint" style="margin:8px 0 0">Котировки: ${QT.routeFor(a).map(sourceLabel).join(' → ')}${a.quoteSymbol ? ' · тикер ' + esc(a.quoteSymbol) : ''}</p>` : `<p class="hint" style="margin:8px 0 0">Цена обновляется только вручную.</p>`}
     </div>
     ${p.qty || p.realized || p.income ? `<div class="card"><h2>Позиция · ${esc((d.accounts[accountId] || {}).name || '')}</h2><div class="stats" style="margin-top:0">
       <div><div class="label">Количество</div><div class="v num">${C.formatQty(p.qty)}</div></div>
@@ -789,7 +808,15 @@ function openAsset(assetId, accountId) {
     <div class="card"><h2>Операции</h2><ul class="list">${txs.map(opItem).join('') || '<li class="empty">Нет операций</li>'}</ul></div>`);
   if (pts.length > 1) lineChart(document.getElementById('asset-chart'), pts.map(x => fdate(x.date)), [{ name: 'Цена', color: 'var(--s1)', values: pts.map(x => x.price) }], v => fprice(v, cur, a));
 }
-const sourceLabel = s => ({ demo: 'Демо', manual: 'Вручную', kase: 'KASE', aix: 'AIX', moex: 'MOEX', crypto: 'CoinGecko', global: 'Биржа' })[s] || s || '';
+const sourceLabel = s => QT.SOURCE_LABELS[s] || s || '';
+// «KASE · 14:32» для сегодняшней цены, «KASE · 27 сен» для более ранней; «устарела», если рынок с тех пор торговался
+function priceMeta(asset, pr) {
+  if (!pr) return 'Цена не загружена';
+  const today = pr.date === C.today();
+  const t = pr.fetchedAt && today ? new Date(pr.fetchedAt).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }) : fdate(pr.date, true);
+  const stale = pr.source !== 'demo' && QT.isStale(asset, pr, Date.now());
+  return esc(sourceLabel(pr.source)) + ' · ' + t + (stale ? ' · <span class="stale">устарела</span>' : '');
+}
 
 function setPriceSheet(assetId) {
   const a = byId(S.assets)[assetId];
@@ -1078,6 +1105,7 @@ function openTxForm(existing, preset) {
     }
     commit(); closeSheet();
     toast(existing ? 'Сохранено' : TYPE_LABELS[type] + ' добавлена');
+    Quotes.update();
   });
 }
 
@@ -1149,6 +1177,20 @@ function renderMore() {
       <button class="btn block" style="margin-top:8px" data-act="add-acc">Добавить счёт</button>
     </div>
 
+    <div class="card" id="quotes-card">
+      <h2>Котировки</h2>
+      ${S.demo ? '<p class="hint" style="margin:0 0 10px">В демо-режиме цены вымышленные и не обновляются.</p>' : ''}
+      <label class="field row" style="justify-content:flex-start;gap:10px"><input type="checkbox" id="set-auto" ${st.autoQuotes ? 'checked' : ''} style="width:20px;height:20px"><span style="margin:0;color:var(--ink)">Обновлять автоматически</span></label>
+      <label class="field"><span>Как часто, пока приложение открыто</span><select class="input" id="set-interval">${[5, 15, 30, 60].map(m => `<option value="${m}" ${m === st.quoteRefreshMinutes ? 'selected' : ''}>каждые ${m} мин</option>`).join('')}</select></label>
+      <label class="field"><span>Адрес прокси (для KASE, AIX и курсов Нацбанка)</span><input class="input" id="set-proxy" inputmode="url" autocomplete="off" placeholder="https://portfolio-proxy.имя.workers.dev" value="${esc(st.proxyUrl)}"></label>
+      <label class="field"><span>Токен прокси</span><input class="input" type="password" id="set-token" autocomplete="off" value="${esc(st.proxyToken)}"></label>
+      <label class="field"><span>Ключ Twelve Data (бумаги NYSE, NASDAQ, LSE)</span><input class="input" type="password" id="set-td" autocomplete="off" value="${esc(st.twelveDataKey)}"></label>
+      <p class="hint">Ключи хранятся только на этом устройстве и не попадают в резервную копию. <a href="https://github.com/yeakhmetov/Portfolio/blob/main/proxy/README.md" target="_blank" rel="noopener">Как настроить прокси</a></p>
+      <div class="btn-row"><button class="btn" data-act="check-sources">Проверить источники</button><button class="btn primary" data-act="refresh-quotes" ${S.demo ? 'disabled' : ''}>Обновить сейчас</button></div>
+      <ul class="checks" id="checks">${Quotes.checks || ''}</ul>
+      <p class="hint" style="margin:10px 0 0">${Quotes.statusText()}</p>
+    </div>
+
     <div class="card">
       <h2>Настройки</h2>
       <label class="field"><span>Базовая валюта</span><select class="input" id="set-base">${['KZT', 'USD', 'EUR', 'RUB'].map(c => `<option ${c === st.baseCurrency ? 'selected' : ''}>${c}</option>`).join('')}</select></label>
@@ -1162,7 +1204,7 @@ function renderMore() {
       <div class="btn-row"><button class="btn primary" data-act="export-json">Сохранить копию</button><button class="btn" data-act="import-json">Восстановить</button></div>
       <div class="btn-row"><button class="btn" data-act="export-csv">Операции в CSV</button><button class="btn" data-act="import-csv">Импорт CSV</button></div>
     </div>
-    <p class="hint" style="text-align:center">Котировки и PIN-код появятся на следующих шагах.</p>`;
+    <p class="hint" style="text-align:center">PIN-код появится на следующем шаге.</p>`;
 }
 
 function addAccountSheet() {
@@ -1209,7 +1251,7 @@ function download(name, text, mime) {
 }
 
 function exportJson() {
-  const text = JSON.stringify(C.makeBackup(Object.assign({}, S, { settings: Object.assign({}, S.settings, { hideAmounts: false }) })));
+  const text = JSON.stringify(C.makeBackup(Object.assign({}, S, { settings: Object.assign({}, S.settings, { hideAmounts: false, proxyToken: '', twelveDataKey: '' }) })));
   download('portfolio-backup-' + C.today() + '.json', text, 'application/json').then(done => {
     if (!done) return;
     S.settings.lastBackupAt = new Date().toISOString();
@@ -1243,7 +1285,9 @@ function restoreBackup(mode) {
   const data = pendingBackup.data;
   if (mode === 'replace') {
     if (S.txs.length && !S.demo && !confirm('Текущие данные будут удалены. Продолжить?')) return;
+    const keep = { proxyUrl: S.settings.proxyUrl, proxyToken: S.settings.proxyToken, twelveDataKey: S.settings.twelveDataKey };
     S = hydrate(data);
+    Object.keys(keep).forEach(k => { if (!S.settings[k]) S.settings[k] = keep[k]; });
     S.settings.lastBackupAt = S.settings.lastBackupAt || pendingBackup.exportedAt;
     toast('Данные восстановлены');
   } else {
@@ -1253,6 +1297,7 @@ function restoreBackup(mode) {
   }
   pendingBackup = null;
   closeSheet(); commit();
+  Quotes.update();
 }
 
 let csvImport = null;
@@ -1321,7 +1366,229 @@ function csvCommit() {
   csvImport = null;
   closeSheet(); commit();
   toast('Импортировано операций: ' + res.txs.length);
+  Quotes.update();
 }
+
+/* ================= котировки ================= */
+
+const Quotes = {
+  busy: false, failures: {}, checks: '', lastRun: null, lastUpdated: 0, timer: null,
+
+  async fetchJson(url, init) {
+    const ctrl = new AbortController();
+    const t = setTimeout(() => ctrl.abort(), 12000);
+    try {
+      const r = await fetch(url, Object.assign({}, init || {}, { signal: ctrl.signal, cache: 'no-store' }));
+      if (!r.ok) { const e = new Error('HTTP ' + r.status); e.code = r.status === 401 ? 'unauthorized' : 'http'; throw e; }
+      return await r.json();
+    } catch (e) {
+      if (e.name === 'AbortError') { const x = new Error('нет ответа'); x.code = 'timeout'; throw x; }
+      if (e instanceof TypeError) { const x = new Error('сеть недоступна или источник не разрешает запросы из браузера'); x.code = 'network'; throw x; }
+      throw e;
+    } finally { clearTimeout(t); }
+  },
+
+  heldAssets() {
+    const held = new Set(derive().sum.rows.map(r => r.assetId));
+    return S.assets.filter(a => held.has(a.id));
+  },
+
+  // понятное описание, почему часть котировок не может обновляться
+  configIssues() {
+    if (!S || S.demo || !S.settings.autoQuotes) return '';
+    const held = this.heldAssets();
+    const need = src => held.filter(a => QT.routeFor(a)[0] === src).map(a => a.ticker.replace(/_.*/, ''));
+    const parts = [];
+    const kz = need('kase').concat(need('aix'));
+    if (kz.length && !S.settings.proxyUrl) parts.push(`${kz.slice(0, 4).join(', ')}${kz.length > 4 ? '…' : ''} — нужен прокси для KASE/AIX`);
+    const gl = need('global');
+    if (gl.length && !S.settings.twelveDataKey && !S.settings.proxyUrl) parts.push(`${gl.slice(0, 4).join(', ')} — нужен ключ Twelve Data`);
+    return parts.length ? 'Котировки не обновляются: ' + parts.join('; ') + '.' : '';
+  },
+
+  statusText() {
+    if (this.busy) return 'Обновление…';
+    if (!this.lastRun) return S.settings.autoQuotes ? 'Цены обновятся при открытии приложения.' : 'Автообновление выключено.';
+    const t = new Date(this.lastRun).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+    const f = Object.keys(this.failures).filter(k => !['no-proxy', 'no-key', 'not-found'].includes(this.failures[k].code));
+    return `Проверено в ${t}` + (this.lastUpdated ? `, обновлено цен: ${this.lastUpdated}` : '') +
+      (f.length ? '. Ошибки: ' + f.map(k => sourceLabel(k) + ' — ' + esc(this.failures[k].message)).join('; ') : '');
+  },
+
+  setBusy(on) {
+    this.busy = on;
+    const b = document.getElementById('refresh');
+    b.classList.toggle('busy', on);
+    b.setAttribute('aria-busy', on);
+  },
+
+  async update(opts) {
+    opts = opts || {};
+    if (!S || this.busy) return;
+    if (S.demo) { if (opts.manual) toast('В демо-режиме цены не обновляются'); return; }
+    if (!opts.manual && !opts.force && !S.settings.autoQuotes) return;
+    if (!navigator.onLine) { if (opts.manual) toast('Нет сети — показаны сохранённые цены'); return; }
+    const assets = this.heldAssets();
+    if (!assets.length) { if (opts.manual) toast('Нет бумаг для обновления'); return; }
+    this.setBusy(true);
+    let changed = false;
+    try {
+      changed = await this.updateFx(opts.force) || changed;
+      const d = derive();
+      const latest = {};
+      assets.forEach(a => { const l = S.prices[a.id]; if (l && l.length) latest[a.id] = l[l.length - 1]; });
+      const res = await QT.refreshQuotes({
+        assets, latest, settings: S.settings, now: Date.now(), force: !!opts.force,
+        fetchJson: (u, i) => this.fetchJson(u, i),
+        fxRate: (f, t) => d.fx.rate(f, t, C.today())
+      });
+      res.updates.forEach(u => {
+        const list = S.prices[u.assetId] = (S.prices[u.assetId] || []).filter(x => x.date !== u.date);
+        list.push({ date: u.date, price: u.price, source: u.source, fetchedAt: u.fetchedAt });
+        list.sort((x, y) => x.date < y.date ? -1 : x.date > y.date ? 1 : 0);
+      });
+      if (res.updates.length) changed = true;
+      this.failures = res.failures;
+      this.lastRun = Date.now();
+      this.lastUpdated = res.updates.length;
+      // о сбоях источника сообщаем тостом; о ненастроенных источниках — плашкой на обзоре
+      const broken = Object.keys(res.failures).filter(k => !['no-proxy', 'no-key', 'not-found'].includes(res.failures[k].code));
+      if (broken.length) {
+        const tick = res.failures[broken[0]].tickers[0];
+        const a = assets.find(x => x.ticker === tick);
+        const last = a && latest[a.id];
+        toast(`Не удалось обновить котировки ${broken.map(sourceLabel).join(', ')}` + (last ? `, показаны данные на ${fdate(last.date)}` : ''));
+      } else if (opts.manual) toast(res.updates.length ? 'Обновлено цен: ' + res.updates.length : 'Цены актуальны');
+    } catch (e) {
+      console.error(e);
+      if (opts.manual) toast('Не удалось обновить котировки');
+    } finally {
+      this.setBusy(false);
+      if (changed) commit(); else render();
+    }
+  },
+
+  // курсы валют — не чаще раза в 6 часов
+  async updateFx(force) {
+    const at = S.settings.fxFetchedAt ? Date.parse(S.settings.fxFetchedAt) : 0;
+    if (!force && Date.now() - at < 6 * 3600000) return false;
+    const curs = new Set(['USD']);
+    S.assets.forEach(a => curs.add(a.currency));
+    S.accounts.forEach(a => curs.add(a.currency));
+    curs.add(S.settings.baseCurrency);
+    curs.delete('KZT');
+    try {
+      const r = await QT.refreshFx({ settings: S.settings, currencies: Array.from(curs), fetchJson: (u, i) => this.fetchJson(u, i) });
+      const today = C.today();
+      r.rates.forEach(x => {
+        const date = x.date || today;
+        S.fx = S.fx.filter(y => !(y.date === date && y.base === x.base && y.quote === x.quote));
+        S.fx.push({ date, base: x.base, quote: x.quote, rate: x.rate, source: r.source });
+      });
+      S.settings.fxFetchedAt = new Date().toISOString();
+      invalidate();
+      return true;
+    } catch (e) { this.failures.fx = { code: 'error', message: e.message, tickers: [] }; return false; }
+  },
+
+  // проверка каждого источника отдельным запросом
+  async check() {
+    const st = S.settings, out = [];
+    const el = () => document.getElementById('checks');
+    const show = () => { this.checks = out.map(c => `<li><b class="${c.ok ? 'up' : 'down'}">${c.ok ? '✓' : '✗'}</b><span><b style="width:auto">${esc(c.name)}</b> — ${esc(c.msg)}</span></li>`).join(''); if (el()) el().innerHTML = this.checks; };
+    out.push({ ok: true, name: 'Проверка', msg: 'идёт…' }); show(); out.length = 0;
+    const run = async (name, fn) => { try { out.push({ ok: true, name, msg: await fn() }); } catch (e) { out.push({ ok: false, name, msg: e.message }); } show(); };
+    const hdr = st.proxyToken ? { headers: { 'X-Access-Token': st.proxyToken } } : undefined;
+    const base = (st.proxyUrl || '').replace(/\/+$/, '');
+    if (base) {
+      await run('Прокси', async () => {
+        const h = await this.fetchJson(base + '/health', hdr);
+        return 'работает; KASE и AIX: ' + (h.sources && h.sources.kase ? 'ключи брокера заданы' : 'не заданы ключи брокера (TN_API_KEY, TN_SECRET)');
+      });
+      await run('Нацбанк РК', async () => { const j = await this.fetchJson(base + '/fx', hdr); const usd = (j.rates || []).find(r => r.base === 'USD'); return usd ? 'USD = ' + usd.rate + ' ₸ на ' + fdate(usd.date, true) : 'нет курса USD'; });
+      await run('KASE', async () => { const j = await this.fetchJson(base + '/quotes?symbols=kase:KCEL', hdr); const q = (j.quotes || [])[0]; if (!q) throw new Error((j.errors && j.errors['kase:KCEL']) || 'нет котировки'); return 'KCEL = ' + q.price + ' ' + (q.currency || ''); });
+      await run('AIX', async () => { const j = await this.fetchJson(base + '/quotes?symbols=aix:KAP', hdr); const q = (j.quotes || [])[0]; if (!q) throw new Error((j.errors && j.errors['aix:KAP']) || 'нет котировки'); return 'KAP = ' + q.price + ' ' + (q.currency || ''); });
+    } else out.push({ ok: false, name: 'KASE, AIX, Нацбанк', msg: 'не указан адрес прокси' });
+    await run('MOEX', async () => { const j = await this.fetchJson('https://iss.moex.com/iss/engines/stock/markets/shares/securities.json?iss.meta=off&iss.only=marketdata&securities=SBER&marketdata.columns=SECID,BOARDID,LAST,LCURRENTPRICE'); const q = QT.parseMoex(j).SBER; return q ? 'SBER = ' + q.price + ' ₽' : 'ответ получен'; });
+    await run('CoinGecko', async () => { const j = await this.fetchJson('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd'); return 'BTC = $' + j.bitcoin.usd; });
+    if (st.twelveDataKey) await run('Twelve Data', async () => { const j = await this.fetchJson('https://api.twelvedata.com/price?symbol=AAPL&apikey=' + encodeURIComponent(st.twelveDataKey)); const q = QT.parseTwelveData(j, ['AAPL']).AAPL; if (!q) throw new Error('нет котировки'); return 'AAPL = $' + q.price; });
+    else out.push({ ok: false, name: 'Twelve Data', msg: 'не указан ключ' });
+    await run('Курсы (запасной)', async () => { const r = QT.parseErApi(await this.fetchJson('https://open.er-api.com/v6/latest/USD'), ['USD']); return 'USD = ' + r[0].rate + ' ₸'; });
+    show();
+  },
+
+  start() {
+    this.update();
+    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') this.update(); });
+    window.addEventListener('online', () => this.update());
+    // раз в минуту: какие цены пора обновить, решает QT.needsRefresh
+    clearInterval(this.timer);
+    this.timer = setInterval(() => { if (document.visibilityState === 'visible') this.update(); }, 60000);
+  }
+};
+
+// «потянуть вниз» на обзоре и позициях
+(() => {
+  let y0 = null, dy = 0;
+  const ptr = document.getElementById('ptr');
+  document.addEventListener('touchstart', e => {
+    y0 = window.scrollY === 0 && (UI.tab === 'overview' || UI.tab === 'positions') && !document.getElementById('sheet').classList.contains('on') ? e.touches[0].clientY : null;
+    dy = 0;
+  }, { passive: true });
+  document.addEventListener('touchmove', e => {
+    if (y0 == null) return;
+    dy = e.touches[0].clientY - y0;
+    ptr.style.height = dy > 20 ? Math.min(40, dy / 3) + 'px' : '0';
+    ptr.textContent = dy > 90 ? 'Отпустите, чтобы обновить котировки' : 'Потяните, чтобы обновить';
+  }, { passive: true });
+  document.addEventListener('touchend', () => {
+    if (y0 != null && dy > 90) Quotes.update({ force: true, manual: true });
+    y0 = null; ptr.style.height = '0';
+  });
+})();
+
+function editAssetSheet(assetId) {
+  const a = S.assets.find(x => x.id === assetId);
+  if (!a) return;
+  const used = S.txs.some(t => t.assetId === a.id);
+  openSheet(`<div class="sh"><h2 id="sheet-title">Актив ${esc(a.ticker)}</h2><button class="iconbtn" data-act="close" aria-label="Закрыть">✕</button></div>
+  <form id="asset-form">
+    <div class="grid2">
+      <label class="field"><span>Тикер</span><input class="input" name="ticker" value="${esc(a.ticker)}" required autocapitalize="characters"></label>
+      <label class="field"><span>Биржа</span><select class="input" name="exchange">${EXCHANGES.map(x => `<option ${x === a.exchange ? 'selected' : ''}>${x}</option>`).join('')}</select></label>
+    </div>
+    <label class="field"><span>Название</span><input class="input" name="name" value="${esc(a.name)}"></label>
+    <div class="grid2">
+      <label class="field"><span>Класс</span><select class="input" name="class">${Object.keys(CLASS_LABELS).map(k => `<option value="${k}" ${k === a.class ? 'selected' : ''}>${CLASS_LABELS[k]}</option>`).join('')}</select></label>
+      <label class="field"><span>Валюта</span><select class="input" name="currency" ${used ? 'disabled' : ''}>${CURRENCIES.map(c => `<option ${c === a.currency ? 'selected' : ''}>${c}</option>`).join('')}</select></label>
+    </div>
+    ${used ? '<p class="hint">Валюту нельзя изменить: по активу уже есть операции.</p>' : ''}
+    <div class="grid2">
+      <label class="field"><span>Сектор</span><input class="input" name="sector" value="${esc(a.sector || '')}"></label>
+      <label class="field"><span>Номинал (облигации)</span><input class="input num" name="faceValue" inputmode="decimal" value="${a.faceValue || ''}"></label>
+    </div>
+    <label class="field"><span>Цена</span><select class="input" name="quoteSource"><option value="auto" ${a.quoteSource !== 'manual' ? 'selected' : ''}>Обновлять автоматически</option><option value="manual" ${a.quoteSource === 'manual' ? 'selected' : ''}>Только вручную</option></select></label>
+    <label class="field"><span>Тикер для котировок, если отличается</span><input class="input" name="quoteSymbol" value="${esc(a.quoteSymbol || '')}" placeholder="${a.class === 'crypto' ? 'id монеты в CoinGecko, например bitcoin' : 'например KCEL.KZ'}"></label>
+    <p class="err" id="asset-err"></p>
+    <button class="btn primary block">Сохранить</button>
+  </form>`);
+  document.getElementById('asset-form').addEventListener('submit', e => {
+    e.preventDefault();
+    const f = e.target, ticker = f.ticker.value.trim().toUpperCase();
+    if (!ticker) { document.getElementById('asset-err').textContent = 'Введите тикер'; return; }
+    if (S.assets.some(x => x.id !== a.id && x.ticker.toUpperCase() === ticker)) { document.getElementById('asset-err').textContent = 'Такой тикер уже есть'; return; }
+    a.ticker = ticker; a.name = f.name.value.trim() || ticker; a.exchange = f.exchange.value; a.class = f.class.value;
+    if (!used) a.currency = f.currency.value;
+    a.sector = f.sector.value.trim() || undefined;
+    const fv = parseNum(f.faceValue.value); a.faceValue = fv > 0 ? fv : undefined;
+    a.quoteSource = f.quoteSource.value === 'manual' ? 'manual' : undefined;
+    a.quoteSymbol = f.quoteSymbol.value.trim() || undefined;
+    closeSheet(); commit(); toast('Актив сохранён');
+    Quotes.update({ force: true });
+  });
+}
+
+document.getElementById('refresh').addEventListener('click', () => Quotes.update({ force: true, manual: true }));
 
 /* ================= оболочка ================= */
 
@@ -1339,6 +1606,7 @@ function render() {
     ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 3l18 18M10.6 5.1A10 10 0 0 1 12 5c6 0 10 7 10 7a17 17 0 0 1-3 3.7M6.6 6.6C3.9 8.3 2 12 2 12s4 7 10 7a9.7 9.7 0 0 0 5.4-1.6"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/></svg>'
     : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>';
   applyTheme();
+  document.getElementById('refresh').hidden = S.demo || !S.txs.length;
   RENDER[UI.tab]();
 }
 function applyTheme() {
@@ -1415,6 +1683,10 @@ document.addEventListener('click', e => {
     case 'import-csv': document.getElementById('file-csv').click(); break;
     case 'restore': restoreBackup(act.dataset.mode); break;
     case 'csv-go': csvCommit(); break;
+    case 'refresh-quotes': Quotes.update({ force: true, manual: true }); break;
+    case 'check-sources': Quotes.check(); break;
+    case 'edit-asset': editAssetSheet(act.dataset.asset); break;
+    case 'goto-quotes': UI.tab = 'more'; render(); setTimeout(() => { const c = document.getElementById('quotes-card'); if (c) c.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 50); break;
     case 'archive-acc': { const a = S.accounts.find(x => x.id === act.dataset.id); a.archived = !a.archived; commit(); break; }
   }
 });
@@ -1429,6 +1701,11 @@ document.addEventListener('change', e => {
   else if (t.id === 'set-base') { S.settings.baseCurrency = t.value; UI.contrib = null; commit(); }
   else if (t.id === 'set-theme') { S.settings.theme = t.value; commit(); }
   else if (t.id === 'set-method') { S.settings.method = t.value; commit(); }
+  else if (t.id === 'set-auto') { S.settings.autoQuotes = t.checked; commit(); if (t.checked) Quotes.update(); }
+  else if (t.id === 'set-interval') { S.settings.quoteRefreshMinutes = +t.value; commit(); }
+  else if (t.id === 'set-proxy') { S.settings.proxyUrl = t.value.trim(); Quotes.checks = ''; commit(); Quotes.update({ force: true }); }
+  else if (t.id === 'set-token') { S.settings.proxyToken = t.value.trim(); commit(); Quotes.update({ force: true }); }
+  else if (t.id === 'set-td') { S.settings.twelveDataKey = t.value.trim(); commit(); Quotes.update({ force: true }); }
   else if (t.dataset.target) { S.targets[t.dataset.target] = Math.max(0, Math.min(100, parseNum(t.value) || 0)); commit(); }
   else if (t.id === 'contrib') { const v = C.parseMoney(t.value, S.settings.baseCurrency); UI.contrib = v > 0 ? v : 0; render(); }
 });
@@ -1457,6 +1734,7 @@ if ('serviceWorker' in navigator && location.protocol !== 'file:') navigator.ser
     toast('Не удалось прочитать сохранённые данные');
   }
   render();
+  Quotes.start();
 })();
 </script>
 </body>

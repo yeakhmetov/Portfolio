@@ -19,9 +19,11 @@ ul{padding:0;margin:0}
 <h1 id="h">Тесты</h1>
 <ul id="list"></ul>
 <script src="core.js"></script>
+<script src="quotes.js"></script>
 <script src="tests.js"></script>
 <script>
-var r = window.TEST_RESULTS, list = document.getElementById('list');
+window.TEST_DONE.then(function (r) {
+var list = document.getElementById('list');
 r.forEach(function (t) {
   var li = document.createElement('li');
   li.className = t.ok ? 'ok' : 'bad';
@@ -31,6 +33,7 @@ r.forEach(function (t) {
 });
 var passed = r.filter(function (t) { return t.ok; }).length;
 document.getElementById('h').textContent = 'Тесты: ' + passed + ' из ' + r.length;
+});
 </script>
 </body>
 </html>
