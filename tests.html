@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Портфель — тесты</title>
+<style>
+:root{--bg:#F3F5F4;--ink:#14302A;--muted:#5B6F69;--ok:#0E6B54;--bad:#B4471F}
+@media (prefers-color-scheme:dark){:root{--bg:#0D1614;--ink:#E3ECE8;--muted:#8DA29B;--ok:#3DB892;--bad:#F08A5D}}
+body{margin:0;padding:16px;background:var(--bg);color:var(--ink);font:15px/1.5 system-ui,sans-serif}
+h1{font-size:20px;margin:0 0 12px}
+li{list-style:none;padding:4px 0}
+ul{padding:0;margin:0}
+.ok{color:var(--ok)}.bad{color:var(--bad)}
+.err{display:block;color:var(--muted);font-size:13px;margin-left:22px}
+</style>
+</head>
+<body>
+<h1 id="h">Тесты</h1>
+<ul id="list"></ul>
+<script src="core.js"></script>
+<script src="tests.js"></script>
+<script>
+var r = window.TEST_RESULTS, list = document.getElementById('list');
+r.forEach(function (t) {
+  var li = document.createElement('li');
+  li.className = t.ok ? 'ok' : 'bad';
+  li.textContent = (t.ok ? '✓ ' : '✗ ') + t.name;
+  if (!t.ok) { var s = document.createElement('span'); s.className = 'err'; s.textContent = t.error; li.appendChild(s); }
+  list.appendChild(li);
+});
+var passed = r.filter(function (t) { return t.ok; }).length;
+document.getElementById('h').textContent = 'Тесты: ' + passed + ' из ' + r.length;
+</script>
+</body>
+</html>
