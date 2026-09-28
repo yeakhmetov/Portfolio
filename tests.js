@@ -470,6 +470,20 @@
     });
   });
 
+  /* ---------- PIN-код ---------- */
+
+  test('PIN-код: формат, соль, проверка', function () {
+    eq(C.validPin('1234'), true); eq(C.validPin('123456'), true);
+    eq(C.validPin('123'), false, 'короткий'); eq(C.validPin('1234567'), false, 'длинный'); eq(C.validPin('12a4'), false, 'буквы');
+    return Promise.all([C.makePin('2580'), C.makePin('2580'), C.hashPin('1234', 'salt')]).then(function (r) {
+      eq(r[0].hash.length, 64, 'SHA-256 в hex'); eq(r[0].len, 4);
+      eq(r[0].hash !== r[1].hash, true, 'одинаковый PIN с разной солью даёт разный хэш');
+      // эталон: sha256("salt:1234")
+      eq(r[2], '35c56314f89066056408d6d269daf9e69217b9953215f286eec86cec3076271a', 'совпадает с эталоном SHA-256');
+      return Promise.all([C.checkPin('2580', r[0]), C.checkPin('2581', r[0]), C.checkPin('2580', null)]);
+    }).then(function (ok) { eq(ok.join(), 'true,false,false'); });
+  });
+
   /* ---------- вывод ---------- */
 
   var done = Promise.all(pending).then(function () {

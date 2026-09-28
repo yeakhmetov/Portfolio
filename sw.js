@@ -1,7 +1,7 @@
 // Офлайн-режим: приложение хранится на телефоне.
 // При наличии сети берётся свежая версия с сервера, без сети — сохранённая копия.
 // Запросы к другим сайтам (котировки) не перехватываются, кроме шрифтов.
-const VERSION = 'portfolio-v2';
+const VERSION = 'portfolio-v3';
 const CORE = ['./', './index.html', './core.js', './quotes.js', './manifest.webmanifest', './icon-192.png', './icon-512.png',
   './icon-192-maskable.png', './icon-512-maskable.png', './apple-touch-icon.png'];
 

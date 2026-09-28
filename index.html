@@ -16,24 +16,25 @@
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600;700&family=Unbounded:wght@500;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600;700&family=Unbounded:wght@500;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+<noscript><link href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600;700&family=Unbounded:wght@500;700&display=swap" rel="stylesheet"></noscript>
 <style>
 :root{
-  --bg:#E9EEEB;--card:#FFFFFF;--ink:#14302A;--muted:#5B6F69;--line:#D3DDD8;
+  --bg:#E9EEEB;--card:#FFFFFF;--ink:#14302A;--muted:#4F625C;--line:#D3DDD8;
   --accent:#0E6B54;--accent-ink:#FFFFFF;--soft:#D7E8E1;--up:#0E6B54;--down:#B4471F;--hi:#E2A11B;
   --s1:#2a78d6;--s2:#eb6834;--s3:#1baf7a;--s4:#eda100;--s5:#e87ba4;--s6:#008300;--s7:#4a3aa7;--s8:#e34948;
-  --grid:#E3EAE6;
+  --grid:#E3EAE6;--toast-bg:#14302A;--toast-ink:#FFFFFF;
   --display:"Unbounded","Onest",system-ui,sans-serif;--body:"Onest",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
   color-scheme:light;
 }
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
   --bg:#0D1614;--card:#15211E;--ink:#E3ECE8;--muted:#8DA29B;--line:#26352F;--accent:#3DB892;--accent-ink:#06201A;--soft:#1C332C;
-  --up:#3DB892;--down:#F08A5D;--hi:#F0B63A;--grid:#1E2C28;
+  --up:#3DB892;--down:#F08A5D;--hi:#F0B63A;--grid:#1E2C28;--toast-bg:#2B4740;--toast-ink:#E3ECE8;
   --s1:#3987e5;--s2:#d95926;--s3:#199e70;--s4:#c98500;--s5:#d55181;--s6:#008300;--s7:#9085e9;--s8:#e66767;
   color-scheme:dark;}}
 :root[data-theme="dark"]{
   --bg:#0D1614;--card:#15211E;--ink:#E3ECE8;--muted:#8DA29B;--line:#26352F;--accent:#3DB892;--accent-ink:#06201A;--soft:#1C332C;
-  --up:#3DB892;--down:#F08A5D;--hi:#F0B63A;--grid:#1E2C28;
+  --up:#3DB892;--down:#F08A5D;--hi:#F0B63A;--grid:#1E2C28;--toast-bg:#2B4740;--toast-ink:#E3ECE8;
   --s1:#3987e5;--s2:#d95926;--s3:#199e70;--s4:#c98500;--s5:#d55181;--s6:#008300;--s7:#9085e9;--s8:#e66767;
   color-scheme:dark;}
 *,*::before,*::after{box-sizing:border-box}
@@ -78,10 +79,10 @@ header.top .acts{display:flex;gap:2px}
 .seg{display:flex;background:var(--soft);border-radius:12px;padding:3px;gap:2px}
 .seg button{flex:1;border:0;background:transparent;border-radius:10px;padding:7px 4px;font-size:13px;font-weight:600;color:var(--muted);min-height:34px}
 .seg button.on{background:var(--card);color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.08)}
-.chips{display:flex;gap:6px;overflow-x:auto;padding-bottom:2px;scrollbar-width:none}
+.chips{display:flex;gap:6px;overflow-x:auto;padding:5px 0;scrollbar-width:none}
 .chips::-webkit-scrollbar{display:none}
 .chip{flex:none;border:1px solid var(--line);background:var(--card);border-radius:999px;padding:6px 12px;font-size:13px;min-height:34px;white-space:nowrap}
-.chip.on{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.chip.on{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
 
 /* графики */
 .chart{position:relative;margin-top:12px}
@@ -154,9 +155,9 @@ nav.tabs button.on{color:var(--accent);font-weight:600}
 .sheet .sh h2{font:700 18px/1.2 var(--display);margin:0}
 
 .toast{position:fixed;z-index:30;left:50%;bottom:calc(144px + env(safe-area-inset-bottom,0px));transform:translate(-50%,20px);opacity:0;pointer-events:none;
-  background:var(--ink);color:var(--bg);border-radius:14px;padding:10px 12px 10px 16px;display:flex;gap:12px;align-items:center;max-width:calc(100% - 32px);transition:.18s;font-size:14px}
+  background:var(--toast-bg);color:var(--toast-ink);border-radius:14px;padding:10px 12px 10px 16px;box-shadow:0 6px 18px rgba(0,0,0,.25);display:flex;gap:12px;align-items:center;max-width:calc(100% - 32px);transition:.18s;font-size:14px}
 .toast.on{opacity:1;transform:translate(-50%,0);pointer-events:auto}
-.toast button{border:0;background:transparent;color:var(--bg);font-weight:700;text-decoration:underline;min-height:32px}
+.toast button{border:0;background:transparent;color:var(--toast-ink);font-weight:700;text-decoration:underline;min-height:32px}
 
 .bar{height:8px;border-radius:4px;background:var(--soft);position:relative;overflow:hidden}
 .bar>b{position:absolute;left:0;top:0;bottom:0;border-radius:4px}
@@ -167,6 +168,40 @@ nav.tabs button.on{color:var(--accent);font-weight:600}
 .rb input{width:72px;min-height:36px;text-align:right;padding:6px 8px}
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 .more-links .item{cursor:pointer}
+.chip,.seg button,.demo-note button,.toast button{position:relative}
+.chip::after,.seg button::after,.demo-note button::after,.toast button::after{content:'';position:absolute;inset:-5px 0}
+.rb input{min-height:44px}
+.tap{cursor:pointer}
+
+/* свайп операции */
+.item.sw{display:block;position:relative;padding:0;overflow:hidden}
+.sw-c{display:flex;align-items:center;gap:12px;padding:10px 0;min-height:56px;background:var(--card);position:relative;z-index:1;transition:transform .18s ease}
+.sw-a{position:absolute;top:0;right:0;bottom:0;display:flex}
+.sw-a button{width:92px;border:0;font-weight:600;font-size:13px}
+.sw-a .e{background:var(--soft);color:var(--ink)}
+.sw-a .d{background:var(--down);color:var(--card)}
+#sheet .sw-a{display:none}
+
+/* экран блокировки */
+.lock{position:fixed;inset:0;z-index:60;background:var(--bg);display:grid;place-items:center;
+  padding:env(safe-area-inset-top,0px) 16px env(safe-area-inset-bottom,0px);overflow-y:auto}
+.lock-in{text-align:center;width:100%;max-width:320px;padding:24px 0}
+.lock-in:focus{outline:none}
+.lock h2{font:700 20px/1.2 var(--display);margin:14px 0 18px}
+.lock .logo{width:56px;height:56px;border-radius:16px;margin:0 auto;display:block}
+.dots{display:flex;justify-content:center;gap:14px;height:16px;margin-bottom:6px}
+.dots span{width:14px;height:14px;border-radius:50%;border:2px solid var(--ink)}
+.dots span.f{background:var(--ink)}
+.lock .err{min-height:22px;margin:6px 0 10px;text-align:center}
+.pad{display:grid;grid-template-columns:repeat(3,72px);gap:14px 22px;justify-content:center}
+.pad button{height:72px;width:72px;border-radius:50%;border:0;background:var(--card);box-shadow:inset 0 0 0 1px var(--line);font:600 26px/1 var(--body)}
+.pad button:active{background:var(--soft)}
+.pad button:disabled{opacity:.4}
+.pad .blank{visibility:hidden}
+.linkbtn{border:0;background:transparent;color:var(--accent);font-weight:600;min-height:44px;margin-top:14px;padding:0 12px}
+.shake{animation:shake .32s}
+@keyframes shake{20%,60%{transform:translateX(-8px)}40%,80%{transform:translateX(8px)}}
+body.privacy header.top,body.privacy main,body.privacy nav.tabs,body.privacy .fab,body.privacy .sheet{filter:blur(14px)}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 @media (max-width:380px){.hero{font-size:26px}.donut-wrap{grid-template-columns:110px 1fr}}
 </style>
@@ -202,8 +237,21 @@ nav.tabs button.on{color:var(--accent);font-weight:600}
 </div></nav>
 
 <div class="sheet-bg" id="sheet-bg"></div>
-<div class="sheet" id="sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-title"></div>
+<div class="sheet" id="sheet" role="dialog" aria-modal="true" aria-label="Окно" inert></div>
 <div class="toast" id="toast" role="status"></div>
+<div class="lock" id="lock" role="dialog" aria-modal="true" aria-labelledby="lock-title" hidden>
+  <div class="lock-in" tabindex="-1">
+    <img class="logo" src="icon-192.png" alt="" width="56" height="56">
+    <h2 id="lock-title">Введите PIN-код</h2>
+    <div class="dots" id="lock-dots" aria-hidden="true"></div>
+    <p class="sr" id="lock-count" aria-live="polite"></p>
+    <p class="err" id="lock-err" role="alert"></p>
+    <div class="pad" id="lock-pad">
+      <button data-key="1">1</button><button data-key="2">2</button><button data-key="3">3</button><button data-key="4">4</button><button data-key="5">5</button><button data-key="6">6</button><button data-key="7">7</button><button data-key="8">8</button><button data-key="9">9</button><button class="blank" tabindex="-1" aria-hidden="true"></button><button data-key="0">0</button><button data-key="del" aria-label="Стереть">⌫</button>
+    </div>
+    <button class="linkbtn" id="lock-forgot">Забыли PIN-код?</button>
+  </div>
+</div>
 
 <input type="file" id="file-json" accept=".json,application/json" hidden>
 <input type="file" id="file-csv" accept=".csv,.txt,text/csv,text/plain" hidden>
@@ -674,7 +722,8 @@ function renderOverview() {
   const pnl = s.total - d.contributed;
   const pnlPct = d.contributed ? pnl / d.contributed : 0;
   const per = PERIODS.find(p => p[0] === UI.period);
-  const hist = historySeries(per[2]);
+  d.hist = d.hist || {};
+  const hist = d.hist[UI.period] || (d.hist[UI.period] = historySeries(per[2]));
   const alloc = allocation(UI.alloc);
   const allocTotal = alloc.reduce((a, b) => a + b.value, 0);
   const movers = s.rows.filter(r => r.hasPrice).map(r => {
@@ -705,7 +754,8 @@ function renderOverview() {
     <div class="card">
       <div class="row"><h2 style="margin:0">Динамика</h2></div>
       <div class="seg" style="margin-top:10px" role="tablist">${PERIODS.map(p => `<button data-period="${p[0]}" class="${p[0] === UI.period ? 'on' : ''}" role="tab" aria-selected="${p[0] === UI.period}">${p[1]}</button>`).join('')}</div>
-      <div class="chart" id="hist-chart"></div>
+      <div class="chart" id="hist-chart" aria-hidden="true"></div>
+      <table class="sr"><caption>Динамика стоимости портфеля</caption><tr><th>Дата</th><th>Стоимость</th><th>Вложено</th></tr>${hist.labels.map((l, i) => i % 8 === 0 || i === hist.labels.length - 1 ? `<tr><td>${esc(l)}</td><td>${money(hist.value[i], base, { digits: 0 })}</td><td>${money(hist.invested[i], base, { digits: 0 })}</td></tr>` : '').join('')}</table>
       <div class="legend"><span><i style="background:var(--s1)"></i>Стоимость</span><span><i class="dash"></i>Вложено</span></div>
     </div>
 
@@ -757,9 +807,9 @@ function renderPositions() {
     <div class="card">
       <div class="row"><span class="label">${rows.length} ${plural(rows.length, 'позиция', 'позиции', 'позиций')}</span><span class="num" style="font-weight:600">${money(total, base, { digits: 0 })}</span></div>
       ${rows.length ? `<ul class="list" style="margin-top:6px">${rows.map(r => `
-        <li class="item tap" data-asset="${esc(r.assetId)}" data-account="${esc(r.accountId)}" tabindex="0" role="button">
-          <div class="badge">${tickerBadge(r.asset)}</div>
-          <div class="main"><div class="t">${esc(r.asset.name)}</div><div class="s num">${C.formatQty(r.qty)} шт · ${esc((d.accounts[r.accountId] || {}).name || '')}${r.hasPrice ? (r.price.source !== 'demo' && QT.isStale(r.asset, r.price, Date.now()) ? ' · <span class="stale">цена устарела</span>' : '') : ' · нет цены'}</div></div>
+        <li class="item tap" data-asset="${esc(r.assetId)}" data-account="${esc(r.accountId)}">
+          <div class="badge" aria-hidden="true">${tickerBadge(r.asset)}</div>
+          <div class="main kb" tabindex="0" role="button"><div class="t">${esc(r.asset.name)}</div><div class="s num">${C.formatQty(r.qty)} шт · ${esc((d.accounts[r.accountId] || {}).name || '')}${r.hasPrice ? (r.price.source !== 'demo' && QT.isStale(r.asset, r.price, Date.now()) ? ' · <span class="stale">цена устарела</span>' : '') : ' · нет цены'}</div></div>
           <div class="r"><div class="t num">${money(r.valueBase, base, { digits: 0 })}</div><div class="s num ${cls(r.pnl)}">${arrow(r.pnl)}${pct(Math.abs(r.pnlPct || 0))}</div></div>
         </li>`).join('')}</ul>` : '<div class="empty">Нет позиций по выбранным фильтрам</div>'}
     </div>
@@ -864,9 +914,11 @@ function opItem(t) {
   sub += (acc ? acc.name : '') + (t.note ? ' · ' + t.note : '');
   const v = txSign(t);
   const icon = { buy: '＋', sell: '−', dividend: '₸', coupon: '%', deposit: '↓', withdraw: '↑', fee: '·', tax: '·', split: '÷', transfer: '⇄' }[t.type];
-  return `<li class="item tap" data-tx="${esc(t.id)}" tabindex="0" role="button"><div class="badge" aria-hidden="true" style="font-size:16px">${icon}</div>
+  // свайп влево открывает «Изменить» и «Удалить»; с клавиатуры те же действия — в карточке операции
+  return `<li class="item sw"><div class="sw-a" aria-hidden="true"><button class="e" data-act="edit-tx" data-id="${esc(t.id)}" tabindex="-1">Изменить</button><button class="d" data-act="del-tx" data-id="${esc(t.id)}" tabindex="-1">Удалить</button></div>
+    <div class="sw-c tap" data-tx="${esc(t.id)}" tabindex="0" role="button"><div class="badge" aria-hidden="true" style="font-size:16px">${icon}</div>
     <div class="main"><div class="t">${esc(title)}</div><div class="s num">${esc(sub)}</div></div>
-    <div class="r"><div class="t num ${v > 0 ? 'up' : ''}">${v ? money(v, t.currency, { sign: true }) : ''}</div><div class="s">${fdate(t.date)}</div></div></li>`;
+    <div class="r"><div class="t num ${v > 0 ? 'up' : ''}">${v ? money(v, t.currency, { sign: true }) : ''}</div><div class="s">${fdate(t.date)}</div></div></div></li>`;
 }
 
 function renderOps() {
@@ -1140,7 +1192,7 @@ function renderPayouts() {
         <div><div class="label">Купоны</div><div class="v num">${money(last12 - divs, base, { digits: 0 })}</div></div>
       </div>
     </div>
-    <div class="card"><h2>По месяцам</h2><div class="chart" id="pay-chart"></div></div>
+    <div class="card"><h2>По месяцам</h2><div class="chart" id="pay-chart" aria-hidden="true"></div><table class="sr"><caption>Выплаты по месяцам</caption>${months.map((m, i) => `<tr><td>${MONTHS_N[+m.slice(5) - 1]} ${m.slice(0, 4)}</td><td>${money(byMonth[i], base, { digits: 0 })}</td></tr>`).join('')}</table></div>
     ${groups.slice(0, 12).map(g => `<div class="group-h row"><span>${MONTHS_N[+g.k.slice(5) - 1]} ${g.k.slice(0, 4)}</span><span class="num">${money(g.sum, base, { digits: 0 })}</span></div><div class="card" style="padding:4px 16px"><ul class="list">${g.list.map(opItem).join('')}</ul></div>`).join('')}`
     : `<div class="card empty"><h2>Выплат пока нет</h2><p>Добавьте полученные дивиденды и купоны — здесь появится календарь и сумма за год.</p><button class="btn primary" data-act="add" data-preset="dividend">Добавить дивиденд</button></div>`;
   if (pays.length) barChart(document.getElementById('pay-chart'), months.map(m => MONTHS[+m.slice(5) - 1]), byMonth, v => money(v, base, { digits: 0 }));
@@ -1204,7 +1256,15 @@ function renderMore() {
       <div class="btn-row"><button class="btn primary" data-act="export-json">Сохранить копию</button><button class="btn" data-act="import-json">Восстановить</button></div>
       <div class="btn-row"><button class="btn" data-act="export-csv">Операции в CSV</button><button class="btn" data-act="import-csv">Импорт CSV</button></div>
     </div>
-    <p class="hint" style="text-align:center">PIN-код появится на следующем шаге.</p>`;
+    <div class="card">
+      <h2>Защита</h2>
+      ${!C.pinSupported() ? '<p class="hint" style="margin:0">PIN-код недоступен: браузер не поддерживает шифрование на этой странице (нужен адрес https://).</p>'
+        : st.pin ? `<p class="hint" style="margin:0 0 10px">PIN-код включён. Он скрывает данные от посторонних; сами данные на устройстве не шифруются.</p>
+        <label class="field"><span>Блокировать</span><select class="input" id="set-lock">${[[0, 'сразу при сворачивании'], [1, 'через 1 минуту'], [5, 'через 5 минут']].map(x => `<option value="${x[0]}" ${x[0] === (st.pin.lockAfter || 0) ? 'selected' : ''}>${x[1]}</option>`).join('')}</select></label>
+        <div class="btn-row"><button class="btn" data-act="pin-change">Изменить PIN</button><button class="btn danger" data-act="pin-off">Выключить</button></div>`
+        : `<p class="hint" style="margin:0 0 10px">PIN-код из 4–6 цифр при открытии приложения и после сворачивания. Данные на устройстве при этом не шифруются.</p>
+        <button class="btn block" data-act="pin-on">Включить PIN-код</button>`}
+    </div>`;
 }
 
 function addAccountSheet() {
@@ -1251,7 +1311,7 @@ function download(name, text, mime) {
 }
 
 function exportJson() {
-  const text = JSON.stringify(C.makeBackup(Object.assign({}, S, { settings: Object.assign({}, S.settings, { hideAmounts: false, proxyToken: '', twelveDataKey: '' }) })));
+  const text = JSON.stringify(C.makeBackup(Object.assign({}, S, { settings: Object.assign({}, S.settings, { hideAmounts: false, proxyToken: '', twelveDataKey: '', pin: null }) })));
   download('portfolio-backup-' + C.today() + '.json', text, 'application/json').then(done => {
     if (!done) return;
     S.settings.lastBackupAt = new Date().toISOString();
@@ -1285,7 +1345,7 @@ function restoreBackup(mode) {
   const data = pendingBackup.data;
   if (mode === 'replace') {
     if (S.txs.length && !S.demo && !confirm('Текущие данные будут удалены. Продолжить?')) return;
-    const keep = { proxyUrl: S.settings.proxyUrl, proxyToken: S.settings.proxyToken, twelveDataKey: S.settings.twelveDataKey };
+    const keep = { proxyUrl: S.settings.proxyUrl, proxyToken: S.settings.proxyToken, twelveDataKey: S.settings.twelveDataKey, pin: S.settings.pin };
     S = hydrate(data);
     Object.keys(keep).forEach(k => { if (!S.settings[k]) S.settings[k] = keep[k]; });
     S.settings.lastBackupAt = S.settings.lastBackupAt || pendingBackup.exportedAt;
@@ -1590,6 +1650,148 @@ function editAssetSheet(assetId) {
 
 document.getElementById('refresh').addEventListener('click', () => Quotes.update({ force: true, manual: true }));
 
+/* ================= свайп операций ================= */
+
+const SW_W = 184;
+const Swipe = { justMoved: false };
+function closeSwipe(li) {
+  li.classList.remove('open');
+  const c = li.querySelector('.sw-c'); c.style.transform = '';
+}
+(() => {
+  let li = null, c = null, x0 = 0, y0 = 0, dx = 0, mode = null, base = 0;
+  document.addEventListener('touchstart', e => {
+    const el = e.target.closest('.sw');
+    document.querySelectorAll('.sw.open').forEach(o => { if (o !== el) closeSwipe(o); });
+    if (!el || el.closest('#sheet') || e.target.closest('.sw-a')) { li = null; return; }
+    li = el; c = el.querySelector('.sw-c');
+    x0 = e.touches[0].clientX; y0 = e.touches[0].clientY; dx = 0; mode = null;
+    base = el.classList.contains('open') ? -SW_W : 0;
+  }, { passive: true });
+  document.addEventListener('touchmove', e => {
+    if (!li) return;
+    const mx = e.touches[0].clientX - x0, my = e.touches[0].clientY - y0;
+    if (!mode) {
+      if (Math.abs(mx) > 10 && Math.abs(mx) > Math.abs(my)) mode = 'h';
+      else if (Math.abs(my) > 10) { li = null; return; }
+      else return;
+    }
+    dx = Math.min(0, Math.max(-SW_W - 30, base + mx));
+    c.style.transition = 'none';
+    c.style.transform = `translateX(${dx}px)`;
+  }, { passive: true });
+  document.addEventListener('touchend', () => {
+    if (!li || mode !== 'h') { li = null; return; }
+    c.style.transition = '';
+    const open = dx < -SW_W / 2;
+    li.classList.toggle('open', open);
+    c.style.transform = open ? `translateX(-${SW_W}px)` : '';
+    Swipe.justMoved = true; setTimeout(() => { Swipe.justMoved = false; }, 400);
+    li = null;
+  });
+})();
+
+/* ================= PIN-код и блокировка ================= */
+
+const Lock = {
+  on: false, entry: '', fails: 0, until: 0, onUnlock: null, hiddenAt: 0, timer: null,
+  has() { return !!(S && S.settings.pin && S.settings.pin.hash && C.pinSupported()); },
+  show(cb) {
+    this.on = true; this.entry = ''; this.onUnlock = cb || null;
+    closeSheet();
+    document.getElementById('lock').hidden = false;
+    document.body.classList.remove('privacy');
+    setInert();
+    this.draw();
+    // фокус на сам экран: экранный диктор прочитает заголовок, цифры можно вводить с клавиатуры
+    setTimeout(() => { const el = document.querySelector('.lock-in'); if (el) el.focus({ preventScroll: true }); }, 30);
+  },
+  hide() {
+    this.on = false;
+    document.getElementById('lock').hidden = true;
+    document.body.classList.remove('privacy');
+    setInert();
+    const cb = this.onUnlock; this.onUnlock = null;
+    if (cb) cb(); else render();
+  },
+  draw(msg) {
+    const len = S.settings.pin.len || 4;
+    document.getElementById('lock-dots').innerHTML = Array.from({ length: len }, (_, i) => `<span class="${i < this.entry.length ? 'f' : ''}"></span>`).join('');
+    document.getElementById('lock-count').textContent = this.entry.length ? `Введено ${this.entry.length} из ${len}` : '';
+    const wait = Math.ceil((this.until - Date.now()) / 1000);
+    document.getElementById('lock-err').textContent = wait > 0 ? `Слишком много попыток. Подождите ${wait} с` : (msg || '');
+    document.querySelectorAll('#lock-pad button[data-key]').forEach(b => { b.disabled = wait > 0; });
+    clearTimeout(this.timer);
+    if (wait > 0) this.timer = setTimeout(() => this.draw(), 1000);
+  },
+  async press(key) {
+    if (!this.on || Date.now() < this.until) return;
+    const pin = S.settings.pin, len = pin.len || 4;
+    if (key === 'del') this.entry = this.entry.slice(0, -1);
+    else if (this.entry.length < len) this.entry += key;
+    this.draw();
+    if (this.entry.length < len) return;
+    const ok = await C.checkPin(this.entry, pin);
+    if (ok) { this.fails = 0; this.hide(); return; }
+    this.fails++; this.entry = '';
+    if (this.fails >= 5) this.until = Date.now() + 30000 * Math.pow(2, this.fails - 5);
+    const dots = document.getElementById('lock-dots');
+    dots.classList.remove('shake'); void dots.offsetWidth; dots.classList.add('shake');
+    this.draw('Неверный PIN-код');
+  }
+};
+document.getElementById('lock-pad').addEventListener('click', e => { const b = e.target.closest('[data-key]'); if (b) Lock.press(b.dataset.key); });
+document.addEventListener('keydown', e => {
+  if (!Lock.on) return;
+  if (/^[0-9]$/.test(e.key)) { e.preventDefault(); Lock.press(e.key); }
+  else if (e.key === 'Backspace') { e.preventDefault(); Lock.press('del'); }
+}, true);
+document.getElementById('lock-forgot').addEventListener('click', async () => {
+  if (!confirm('PIN-код нельзя восстановить. Удалить все данные на этом устройстве и начать заново? Данные можно будет вернуть из резервной копии.')) return;
+  if (!confirm('Точно удалить все счета, операции и цены?')) return;
+  const theme = S.settings.theme;
+  S = initialState(); S.settings.theme = theme;
+  invalidate(); await Store.save(S);
+  Lock.fails = 0; Lock.until = 0;
+  Lock.hide();
+  toast('Данные удалены, PIN-код выключен');
+});
+document.addEventListener('visibilitychange', () => {
+  if (!S) return;
+  if (document.visibilityState === 'hidden') {
+    Lock.hiddenAt = Date.now();
+    // скрыть данные на снимке экрана в переключателе приложений
+    if (Lock.has()) document.body.classList.add('privacy');
+  } else if (Lock.has() && !Lock.on && Date.now() - Lock.hiddenAt >= (S.settings.pin.lockAfter || 0) * 60000) {
+    Lock.show();
+  } else document.body.classList.remove('privacy');
+});
+
+function pinSheet(mode) {
+  const titles = { on: 'Включить PIN-код', change: 'Изменить PIN-код', off: 'Выключить PIN-код' };
+  const field = (name, label) => `<label class="field"><span>${label}</span><input class="input num" type="password" name="${name}" inputmode="numeric" pattern="[0-9]*" maxlength="6" autocomplete="off" required></label>`;
+  openSheet(`<div class="sh"><h2 id="sheet-title">${titles[mode]}</h2><button class="iconbtn" data-act="close" aria-label="Закрыть">✕</button></div>
+    <form id="pin-form">
+      ${mode !== 'on' ? field('cur', 'Текущий PIN-код') : ''}
+      ${mode !== 'off' ? field('p1', 'Новый PIN-код, 4–6 цифр') + field('p2', 'Повторите PIN-код') : ''}
+      ${mode === 'on' ? '<p class="hint">Если забыть PIN-код, данные придётся удалить и восстановить из резервной копии.</p>' : ''}
+      <p class="err" id="pin-err" role="alert"></p>
+      <button class="btn ${mode === 'off' ? 'danger' : 'primary'} block">${mode === 'off' ? 'Выключить' : 'Сохранить'}</button>
+    </form>`);
+  document.getElementById('pin-form').addEventListener('submit', async e => {
+    e.preventDefault();
+    const f = e.target, err = m => { document.getElementById('pin-err').textContent = m; };
+    if (mode !== 'on' && !(await C.checkPin(f.cur.value, S.settings.pin))) return err('Неверный текущий PIN-код');
+    if (mode === 'off') { S.settings.pin = null; closeSheet(); commit(); toast('PIN-код выключен'); return; }
+    if (!C.validPin(f.p1.value)) return err('PIN-код — от 4 до 6 цифр');
+    if (f.p1.value !== f.p2.value) return err('PIN-коды не совпадают');
+    const rec = await C.makePin(f.p1.value);
+    if (S.settings.pin) rec.lockAfter = S.settings.pin.lockAfter || 0;
+    S.settings.pin = rec;
+    closeSheet(); commit(); toast(mode === 'on' ? 'PIN-код включён' : 'PIN-код изменён');
+  });
+}
+
 /* ================= оболочка ================= */
 
 const TITLES = { overview: 'Обзор', positions: 'Позиции', ops: 'Операции', payouts: 'Выплаты', more: 'Ещё' };
@@ -1616,17 +1818,28 @@ function applyTheme() {
 function commit() { invalidate(); render(); Store.save(S); }
 
 let lastFocus = null;
+function setInert() {
+  const sheetOn = document.getElementById('sheet').classList.contains('on');
+  ['header.top', 'main', 'nav.tabs', '#fab'].forEach(sel => { document.querySelector(sel).inert = sheetOn || Lock.on; });
+  document.getElementById('sheet').inert = !sheetOn || Lock.on;
+}
 function openSheet(html) {
   const sh = document.getElementById('sheet');
-  lastFocus = document.activeElement;
+  if (!sh.classList.contains('on')) lastFocus = document.activeElement;
   sh.innerHTML = '<div class="grab" aria-hidden="true"></div>' + html;
   sh.scrollTop = 0;
+  const title = sh.querySelector('#sheet-title');
+  if (title) { sh.removeAttribute('aria-label'); sh.setAttribute('aria-labelledby', 'sheet-title'); }
+  else { sh.removeAttribute('aria-labelledby'); sh.setAttribute('aria-label', 'Окно'); }
   sh.classList.add('on'); document.getElementById('sheet-bg').classList.add('on');
+  setInert();
   const first = sh.querySelector('input:not([type=hidden]),select,button:not([data-act=close])');
   setTimeout(() => (first || sh).focus && (first || sh).focus({ preventScroll: true }), 50);
 }
 function closeSheet() {
+  if (!document.getElementById('sheet').classList.contains('on')) return;
   document.getElementById('sheet').classList.remove('on'); document.getElementById('sheet-bg').classList.remove('on');
+  setInert();
   if (lastFocus && lastFocus.focus) lastFocus.focus({ preventScroll: true });
 }
 
@@ -1656,7 +1869,10 @@ document.addEventListener('click', e => {
   if (ot) { UI.opsType = ot.dataset.opstype; UI.opsLimit = 6; render(); return; }
   const asset = e.target.closest('[data-asset]:not([data-act])');
   if (asset) { openAsset(asset.dataset.asset, asset.dataset.account); return; }
-  const txEl = e.target.closest('[data-tx]');
+  const openSw = document.querySelector('.sw.open');
+  if (openSw && !e.target.closest('.sw-a')) { closeSwipe(openSw); return; }
+  if (Swipe.justMoved) return;
+  const txEl = !e.target.closest('.sw-a') && e.target.closest('[data-tx]');
   if (txEl) { openTx(txEl.dataset.tx); return; }
   const act = e.target.closest('[data-act]');
   if (!act) return;
@@ -1686,13 +1902,14 @@ document.addEventListener('click', e => {
     case 'refresh-quotes': Quotes.update({ force: true, manual: true }); break;
     case 'check-sources': Quotes.check(); break;
     case 'edit-asset': editAssetSheet(act.dataset.asset); break;
+    case 'pin-on': case 'pin-change': case 'pin-off': pinSheet(act.dataset.act.slice(4)); break;
     case 'goto-quotes': UI.tab = 'more'; render(); setTimeout(() => { const c = document.getElementById('quotes-card'); if (c) c.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 50); break;
     case 'archive-acc': { const a = S.accounts.find(x => x.id === act.dataset.id); a.archived = !a.archived; commit(); break; }
   }
 });
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape' && document.getElementById('sheet').classList.contains('on')) closeSheet();
-  if ((e.key === 'Enter' || e.key === ' ') && e.target.matches('.item.tap')) { e.preventDefault(); e.target.click(); }
+  if ((e.key === 'Enter' || e.key === ' ') && e.target.matches('.tap, .kb')) { e.preventDefault(); e.target.click(); }
 });
 document.addEventListener('change', e => {
   const t = e.target;
@@ -1701,6 +1918,7 @@ document.addEventListener('change', e => {
   else if (t.id === 'set-base') { S.settings.baseCurrency = t.value; UI.contrib = null; commit(); }
   else if (t.id === 'set-theme') { S.settings.theme = t.value; commit(); }
   else if (t.id === 'set-method') { S.settings.method = t.value; commit(); }
+  else if (t.id === 'set-lock') { S.settings.pin.lockAfter = +t.value; commit(); }
   else if (t.id === 'set-auto') { S.settings.autoQuotes = t.checked; commit(); if (t.checked) Quotes.update(); }
   else if (t.id === 'set-interval') { S.settings.quoteRefreshMinutes = +t.value; commit(); }
   else if (t.id === 'set-proxy') { S.settings.proxyUrl = t.value.trim(); Quotes.checks = ''; commit(); Quotes.update({ force: true }); }
@@ -1733,8 +1951,8 @@ if ('serviceWorker' in navigator && location.protocol !== 'file:') navigator.ser
     S = initialState();
     toast('Не удалось прочитать сохранённые данные');
   }
-  render();
-  Quotes.start();
+  const boot = () => { render(); Quotes.start(); };
+  if (Lock.has()) { applyTheme(); Lock.show(boot); } else boot();
 })();
 </script>
 </body>

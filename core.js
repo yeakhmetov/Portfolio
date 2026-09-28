@@ -818,6 +818,22 @@
     return { data: out, added: added, skipped: skipped };
   }
 
+  /* ---------- PIN-код ---------- */
+  // PIN защищает от случайного просмотра; хранится только хэш SHA-256 от «соль:PIN»
+
+  function toHex(bytes) { return Array.prototype.map.call(bytes, function (b) { return (b < 16 ? '0' : '') + b.toString(16); }).join(''); }
+  function pinSupported() { return !!(root.crypto && root.crypto.subtle && root.crypto.getRandomValues); }
+  function randomSalt() { var a = new Uint8Array(16); root.crypto.getRandomValues(a); return toHex(a); }
+  function validPin(pin) { return /^\d{4,6}$/.test(String(pin)); }
+  function hashPin(pin, salt) {
+    return root.crypto.subtle.digest('SHA-256', new TextEncoder().encode(salt + ':' + pin)).then(function (buf) { return toHex(new Uint8Array(buf)); });
+  }
+  function makePin(pin) {
+    var salt = randomSalt();
+    return hashPin(pin, salt).then(function (hash) { return { salt: salt, hash: hash, len: String(pin).length, lockAfter: 0 }; });
+  }
+  function checkPin(pin, rec) { return rec && rec.hash ? hashPin(pin, rec.salt).then(function (h) { return h === rec.hash; }) : Promise.resolve(false); }
+
   /* ---------- утилиты ---------- */
 
   function uid() {
@@ -863,7 +879,12 @@
     txsToCSV: txsToCSV,
     makeBackup: makeBackup,
     validateBackup: validateBackup,
-    mergeData: mergeData
+    mergeData: mergeData,
+    pinSupported: pinSupported,
+    validPin: validPin,
+    hashPin: hashPin,
+    makePin: makePin,
+    checkPin: checkPin
   };
 
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
