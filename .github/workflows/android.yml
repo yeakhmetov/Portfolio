@@ -27,6 +27,9 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      VERSION_CODE: ${{ github.run_number }}
+      VERSION_NAME: 1.2.${{ github.run_number }}
     steps:
       - uses: actions/checkout@v4
 
@@ -47,9 +50,6 @@ jobs:
 
       - name: Build APK
         working-directory: android
-        env:
-          VERSION_CODE: ${{ github.run_number }}
-          VERSION_NAME: 1.1.${{ github.run_number }}
         run: ./gradlew assembleRelease --no-daemon --stacktrace
 
       - run: cp android/app/build/outputs/apk/release/app-release.apk portfolio.apk
@@ -67,5 +67,5 @@ jobs:
           gh release delete android-latest --yes --cleanup-tag || true
           gh release create android-latest portfolio.apk \
             --title "Портфель для Android — сборка ${{ github.run_number }}" \
-            --notes "Версия 1.1.${{ github.run_number }} из ${GITHUB_REF_NAME} (${GITHUB_SHA::7}). Установка: скачайте portfolio.apk на телефоне и разрешите установку из этого источника. Обновление ставится поверх, данные сохраняются." \
+            --notes "Версия ${VERSION_NAME} из ${GITHUB_REF_NAME} (${GITHUB_SHA::7}). Установка: скачайте portfolio.apk на телефоне и разрешите установку из этого источника. Обновление ставится поверх, данные сохраняются." \
             --target "${GITHUB_SHA}" --latest
