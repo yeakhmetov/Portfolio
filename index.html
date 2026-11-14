@@ -1860,7 +1860,7 @@ const Quotes = {
     const parts = [];
     const kz = need('kase').concat(need('aix'));
     if (kz.length && !S.settings.proxyUrl) parts.push(`${kz.slice(0, 4).join(', ')}${kz.length > 4 ? '…' : ''} — нужен прокси для KASE/AIX`);
-    const gl = need('global');
+    const gl = need('global').concat(need('us'));
     if (gl.length && !S.settings.twelveDataKey && !S.settings.proxyUrl) parts.push(`${gl.slice(0, 4).join(', ')} — нужен ключ Twelve Data`);
     return parts.length ? 'Котировки не обновляются: ' + parts.join('; ') + '.' : '';
   },
@@ -1962,10 +1962,11 @@ const Quotes = {
     if (base) {
       await run('Прокси', async () => {
         const h = await this.fetchJson(base + '/health', hdr);
-        return 'работает; KASE и AIX: ' + (h.sources && h.sources.kase ? 'ключи брокера заданы' : 'не заданы ключи брокера (TN_API_KEY, TN_SECRET)');
+        return 'работает; KASE, AIX и США: ' + (h.sources && h.sources.kase ? 'ключи брокера заданы' : 'не заданы ключи брокера (TN_API_KEY, TN_SECRET)');
       });
       await run('Нацбанк РК', async () => { const j = await this.fetchJson(base + '/fx', hdr); const usd = (j.rates || []).find(r => r.base === 'USD'); return usd ? 'USD = ' + usd.rate + ' ₸ на ' + fdate(usd.date, true) : 'нет курса USD'; });
       await run('KASE', async () => { const j = await this.fetchJson(base + '/quotes?symbols=kase:KCEL', hdr); const q = (j.quotes || [])[0]; if (!q) throw new Error((j.errors && j.errors['kase:KCEL']) || 'нет котировки'); return 'KCEL = ' + q.price + ' ' + (q.currency || ''); });
+      await run('Freedom (США)', async () => { const j = await this.fetchJson(base + '/quotes?symbols=us:AAPL', hdr); const q = (j.quotes || [])[0]; if (!q) throw new Error((j.errors && j.errors['us:AAPL']) || 'нет котировки'); return 'AAPL = ' + q.price + ' ' + (q.currency || ''); });
       await run('AIX', async () => { const j = await this.fetchJson(base + '/quotes?symbols=aix:KAP', hdr); const q = (j.quotes || [])[0]; if (!q) throw new Error((j.errors && j.errors['aix:KAP']) || 'нет котировки'); return 'KAP = ' + q.price + ' ' + (q.currency || ''); });
     } else out.push({ ok: false, name: 'KASE, AIX, Нацбанк', msg: 'не указан адрес прокси' });
     await run('MOEX', async () => { const j = await this.fetchJson('https://iss.moex.com/iss/engines/stock/markets/shares/securities.json?iss.meta=off&iss.only=marketdata&securities=SBER&marketdata.columns=SECID,BOARDID,LAST,LCURRENTPRICE'); const q = QT.parseMoex(j).SBER; return q ? 'SBER = ' + q.price + ' ₽' : 'ответ получен'; });

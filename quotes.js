@@ -17,13 +17,13 @@
     KASE: ['kase', 'aix', 'global'],
     AIX: ['aix', 'kase', 'global'],
     MOEX: ['moex'],
-    NYSE: ['global', 'kase'],
-    NASDAQ: ['global', 'kase'],
+    NYSE: ['us', 'global', 'kase'],
+    NASDAQ: ['us', 'global', 'kase'],
     LSE: ['global'],
     CRYPTO: ['crypto']
   };
 
-  var SOURCE_LABELS = { kase: 'KASE', aix: 'AIX', moex: 'MOEX', global: 'Twelve Data', crypto: 'CoinGecko', nbk: 'Нацбанк РК', er: 'open.er-api', manual: 'Вручную', trade: 'Сделка', demo: 'Демо' };
+  var SOURCE_LABELS = { kase: 'KASE', aix: 'AIX', us: 'Freedom (США)', moex: 'MOEX', global: 'Twelve Data', crypto: 'CoinGecko', nbk: 'Нацбанк РК', er: 'open.er-api', manual: 'Вручную', trade: 'Сделка', demo: 'Демо' };
 
   var COINS = {
     BTC: 'bitcoin', ETH: 'ethereum', USDT: 'tether', USDC: 'usd-coin', BNB: 'binancecoin', SOL: 'solana', XRP: 'ripple',
@@ -200,6 +200,7 @@
   var ADAPTERS = {
     kase: function (assets, ctx) { return viaProxy('kase', assets, ctx); },
     aix: function (assets, ctx) { return viaProxy('aix', assets, ctx); },
+    us: function (assets, ctx) { return viaProxy('us', assets, ctx); },
 
     moex: function (assets, ctx) {
       var bonds = assets.filter(function (a) { return a.class === 'bond'; });

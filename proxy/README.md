@@ -1,6 +1,6 @@
 # Прокси котировок
 
-Небольшой Cloudflare Worker, через который приложение получает котировки **KASE** и **AIX**
+Небольшой Cloudflare Worker, через который приложение получает котировки **KASE**, **AIX** и **бирж США** (через API Freedom)
 и официальные курсы **Национального банка РК**. Браузер не может запросить эти сайты напрямую:
 они не отдают CORS-заголовки. Прокси ничего не хранит и не пишет в журнал, получает только тикеры.
 
@@ -32,7 +32,7 @@
 
 ```
 curl -H "X-Access-Token: <ACCESS_TOKEN>" https://portfolio-proxy.<имя>.workers.dev/health
-curl -H "X-Access-Token: <ACCESS_TOKEN>" "https://portfolio-proxy.<имя>.workers.dev/quotes?symbols=kase:KCEL,aix:KAP"
+curl -H "X-Access-Token: <ACCESS_TOKEN>" "https://portfolio-proxy.<имя>.workers.dev/quotes?symbols=kase:KCEL,aix:KAP,us:AAPL"
 curl -H "X-Access-Token: <ACCESS_TOKEN>" https://portfolio-proxy.<имя>.workers.dev/fx
 ```
 

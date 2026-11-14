@@ -7,7 +7,7 @@
  * Прокси ничего не хранит и не пишет в журнал: он получает только тикеры,
  * без количеств и сумм.
  *
- * GET /quotes?symbols=kase:KCEL,aix:KAP  → { quotes: [{symbol, price, currency, date, time}], errors: {symbol: message} }
+ * GET /quotes?symbols=kase:KCEL,aix:KAP,us:AAPL  → { quotes: [{symbol, price, currency, date, time}], errors: {symbol: message} }
  * GET /fx                                → { rates: [{date, base, quote: 'KZT', rate}] }
  * GET /health                            → какие источники настроены
  * GET /raw?cmd=getStockQuotesJson&ticker=KCEL.KZ → ответ брокера как есть (только команды чтения котировок, для настройки)
@@ -20,6 +20,7 @@
  *   TN_API_URL       — адрес API, по умолчанию https://tradernet.com/api (запрос идёт на <адрес>/<команда>)
  *   TN_SUFFIX_KASE   — суффикс тикеров KASE у брокера, по умолчанию .KZ
  *   TN_SUFFIX_AIX    — суффикс тикеров AIX у брокера, по умолчанию .AIX
+ *   TN_SUFFIX_US     — суффикс тикеров США у брокера, по умолчанию .US
  */
 
 const CACHE_SECONDS = 120;
@@ -50,7 +51,7 @@ export async function handle(request, env, fetchFn) {
 
   try {
     if (url.pathname === '/health') {
-      return json({ ok: true, sources: { kase: !!(env.TN_API_KEY && env.TN_SECRET), aix: !!(env.TN_API_KEY && env.TN_SECRET), nbk: true } });
+      return json({ ok: true, sources: { kase: !!(env.TN_API_KEY && env.TN_SECRET), aix: !!(env.TN_API_KEY && env.TN_SECRET), us: !!(env.TN_API_KEY && env.TN_SECRET), nbk: true } });
     }
     if (url.pathname === '/fx') {
       return json(await cached('fx', () => nbkRates(fetchFn)));
@@ -107,20 +108,29 @@ const RAW_CMDS = {
   getSecurityInfo: t => ({ ticker: t, sup: true })
 };
 
+// площадки брокера: суффикс тикера и проверка, что котировка с нужной биржи
+const MARKETS = {
+  kase: { suffix: '.KZ', env: 'TN_SUFFIX_KASE', accept: q => /KASE/i.test(String(q.ltr || '') + ' ' + String(q.codesub_nm || '')) },
+  aix: { suffix: '.AIX', env: 'TN_SUFFIX_AIX', accept: q => /AIX/i.test(String(q.ltr || '') + ' ' + String(q.codesub_nm || '')) },
+  us: { suffix: '.US', env: 'TN_SUFFIX_US', accept: q => /USD/i.test(String(q.x_curr || q.curr || '')) && !/MCX|MOEX|SPB/i.test(String(q.ltr || '')) }
+};
+
 async function quote(sym, env, fetchFn) {
   const i = sym.indexOf(':');
   const source = sym.slice(0, i), ticker = sym.slice(i + 1);
   if (i < 1 || !/^[A-Za-z0-9_.\-]{1,24}$/.test(ticker)) throw new Error('bad symbol');
-  if (source !== 'kase' && source !== 'aix') throw new Error('unknown source');
+  const market = MARKETS[source];
+  if (!market) throw new Error('unknown source');
   if (!env.TN_API_KEY || !env.TN_SECRET) throw new Error('source not configured');
-  const suffix = source === 'kase' ? (env.TN_SUFFIX_KASE != null ? env.TN_SUFFIX_KASE : '.KZ') : (env.TN_SUFFIX_AIX != null ? env.TN_SUFFIX_AIX : '.AIX');
-  // сначала тикер с суффиксом биржи, затем как есть
-  const variants = ticker.includes('.') ? [ticker] : [ticker + suffix, ticker];
+  const sfx = env[market.env] != null ? env[market.env] : market.suffix;
+  // сначала тикер с суффиксом биржи, затем как есть; котировка принимается, только если она с нужной биржи
+  // (иначе «T» без суффикса находит одноимённую бумагу Мосбиржи в рублях)
+  const variants = ticker.includes('.') ? [ticker] : [ticker + sfx, ticker];
   let lastErr = null;
   for (const t of variants) {
     try {
       const d = await tradernet('getStockQuotesJson', { tickers: t }, env, fetchFn);
-      const q = parseTradernetQuote(sym, d);
+      const q = parseTradernetQuote(sym, d, market.accept);
       if (q) return q;
     } catch (e) { lastErr = e; }
   }
@@ -139,11 +149,11 @@ function findQuote(d) {
   return null;
 }
 
-export function parseTradernetQuote(sym, d) {
+export function parseTradernetQuote(sym, d, accept) {
   if (!d) throw new Error('empty response');
   if (d.errMsg || d.error) throw new Error(String(d.errMsg || d.error));
   const q = findQuote(d);
-  if (!q) return null;
+  if (!q || (accept && (q.ltr != null || q.codesub_nm != null || q.x_curr != null) && !accept(q))) return null;
   const price = [q.ltp, q.l, q.lp, q.pp, q.close].map(Number).find(v => v > 0);
   if (!price) return null;
   const t = typeof q.ltt === 'string' ? q.ltt : '';
