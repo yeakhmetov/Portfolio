@@ -27,8 +27,9 @@ await test('Разбор RSS Нацбанка', () => {
 });
 
 await test('Разбор котировки брокера', () => {
-  const q = parseTradernetQuote('kase:KCEL', { result: { q: [{ c: 'KCEL.KZ', ltp: 2150.5, x_curr: 'KZT', ltt: '2026-09-28T12:31:05' }] } });
-  assert.deepEqual(q, { symbol: 'kase:KCEL', price: 2150.5, currency: 'KZT', date: '2026-09-28', time: '12:31' });
+  const D = new Date().toISOString().slice(0, 10);
+  const q = parseTradernetQuote('kase:KCEL', { result: { q: [{ c: 'KCEL.KZ', ltp: 2150.5, x_curr: 'KZT', ltt: D + 'T12:31:05' }] } });
+  assert.deepEqual(q, { symbol: 'kase:KCEL', price: 2150.5, currency: 'KZT', date: D, time: '12:31' });
   assert.equal(parseTradernetQuote('kase:X', { q: [{ c: 'X', ltp: 0, pp: 512 }] }).price, 512, 'без сделок — цена закрытия');
   assert.equal(parseTradernetQuote('kase:X', { c: 'X', l: 7, curr: 'USD' }).price, 7);
   assert.equal(parseTradernetQuote('kase:X', { result: { q: [] } }), null);
@@ -55,8 +56,9 @@ await test('/quotes: запрос к брокеру по протоколу v3, 
     const expected = createHmac('sha256', 's3cret').update(init.body + h['X-NtApi-Timestamp']).digest('hex');
     if (h['X-NtApi-Sig'] !== expected || h['X-NtApi-PublicKey'] !== 'K') return new Response(JSON.stringify({ errMsg: 'Bad sign' }));
     const db = {
-      'KCEL.KZ': { ltp: 2150.5, x_curr: 'KZT', ltr: 'KASE', ltt: '2026-09-28T12:31:00' },
-      'KAP.AIX': { ltp: 38.2, x_curr: 'USD', ltr: 'AIX' },
+      'KCEL.KZ': { ltp: 2150.5, x_curr: 'KZT', ltr: 'KASE', ltt: new Date().toISOString().slice(0, 10) + 'T12:31:00' },
+      'KAP.AIX.KZ': { ltp: 27600, x_curr: 'KZT', ltr: 'AIX' },
+      'KCEL.AIX.KZ': { ltp: 1702, x_curr: 'KZT', ltr: 'AIX', ltt: '2022-02-25T19:28:19' },
       'T.US': { ltp: 22.17, x_curr: 'USD', ltr: 'FIX', codesub_nm: 'NYSE' },
       'T': { ltp: 293.52, x_curr: 'RUR', ltr: 'MCX' },
       'KZTKp': { ltp: 900, x_curr: 'KZT', codesub_nm: 'KASE' }
@@ -64,13 +66,14 @@ await test('/quotes: запрос к брокеру по протоколу v3, 
     const list = JSON.parse(init.body).tickers.split(',');
     return new Response(JSON.stringify({ result: { q: list.filter(t => db[t]).map(t => Object.assign({ c: t }, db[t])) } }));
   };
-  const r = await handle(req('/quotes?symbols=kase:KCEL,aix:KAP,kase:KZTKp,kase:NOPE,moex:SBER,us:T,kase:T'), env, fetchFn);
+  const r = await handle(req('/quotes?symbols=kase:KCEL,aix:KAP,aix:KCEL,kase:KZTKp,kase:NOPE,moex:SBER,us:T,kase:T'), env, fetchFn);
   const body = await r.json();
   assert.equal(r.status, 200);
   assert.equal(body.quotes.length, 4);
   assert.equal(body.quotes.find(q => q.symbol === 'us:T').price, 22.17);
   assert.equal(body.errors['kase:T'], 'not found', 'бумага Мосбиржи в рублях не выдаётся за котировку KASE');
-  assert.equal(body.quotes.find(q => q.symbol === 'aix:KAP').currency, 'USD');
+  assert.equal(body.quotes.find(q => q.symbol === 'aix:KAP').price, 27600);
+  assert.equal(body.errors['aix:KCEL'], 'not found', 'цена без сделок с 2022 года не выдаётся');
   assert.equal(body.quotes.find(q => q.symbol === 'kase:KZTKp').price, 900, 'запасной вариант — тикер без суффикса, регистр сохраняется');
   assert.equal(body.errors['kase:NOPE'], 'not found');
   assert.equal(body.errors['moex:SBER'], 'unknown source');

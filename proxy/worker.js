@@ -19,11 +19,12 @@
  *   TN_SECRET        — секретный ключ API Freedom / Tradernet
  *   TN_API_URL       — адрес API, по умолчанию https://tradernet.com/api (запрос идёт на <адрес>/<команда>)
  *   TN_SUFFIX_KASE   — суффикс тикеров KASE у брокера, по умолчанию .KZ
- *   TN_SUFFIX_AIX    — суффикс тикеров AIX у брокера, по умолчанию .AIX
+ *   TN_SUFFIX_AIX    — суффикс тикеров AIX у брокера, по умолчанию .AIX.KZ
  *   TN_SUFFIX_US     — суффикс тикеров США у брокера, по умолчанию .US
  */
 
 const CACHE_SECONDS = 120;
+const STALE_DAYS = 90;
 
 export default {
   async fetch(request, env) {
@@ -106,7 +107,7 @@ const RAW_CMDS = {
 // площадки брокера: суффикс тикера и проверка, что котировка с нужной биржи
 const MARKETS = {
   kase: { suffix: '.KZ', env: 'TN_SUFFIX_KASE', accept: q => /KASE/i.test(String(q.ltr || '') + ' ' + String(q.codesub_nm || '')) },
-  aix: { suffix: '.AIX', env: 'TN_SUFFIX_AIX', accept: q => /AIX/i.test(String(q.ltr || '') + ' ' + String(q.codesub_nm || '')) },
+  aix: { suffix: '.AIX.KZ', env: 'TN_SUFFIX_AIX', accept: q => /AIX/i.test(String(q.ltr || '') + ' ' + String(q.codesub_nm || '')) },
   us: { suffix: '.US', env: 'TN_SUFFIX_US', accept: q => /USD/i.test(String(q.x_curr || q.curr || '')) && !/MCX|MOEX|SPB/i.test(String(q.ltr || '')) }
 };
 
@@ -184,6 +185,8 @@ export function parseTradernetQuote(sym, d, accept) {
   const price = [q.ltp, q.l, q.lp, q.pp, q.close].map(Number).find(v => v > 0);
   if (!price) return null;
   const t = typeof q.ltt === 'string' ? q.ltt : '';
+  // бумага без сделок больше 90 дней (например, Kcell на AIX — с 2022 года) — цена не годится
+  if (/^\d{4}-\d{2}-\d{2}/.test(t) && t.slice(0, 4) > '1970' && Date.now() - Date.parse(t.slice(0, 10)) > STALE_DAYS * 86400000) return null;
   return {
     symbol: sym,
     price,
