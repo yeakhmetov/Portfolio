@@ -90,6 +90,9 @@ header.top .acts{display:flex;gap:2px}
 /* графики */
 .chart{position:relative;margin-top:12px}
 .chart svg{display:block;width:100%;height:auto;overflow:visible}
+.chart{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent}
+.chart svg.has-sel .b:not(.sel){opacity:.45}
+.chart .b{cursor:pointer;transition:opacity .15s}
 .chart .tip{position:absolute;pointer-events:none;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:6px 9px;font-size:12px;
   box-shadow:0 4px 14px rgba(0,0,0,.12);white-space:nowrap;opacity:0;transition:opacity .1s;z-index:2}
 .chart .tip.on{opacity:1}
@@ -729,17 +732,29 @@ function barChart2(el, labels, series, fmt) {
   el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(series.map(r => r.name).join(', '))}">
     <line x1="0" x2="${W}" y1="${y(0).toFixed(1)}" y2="${y(0).toFixed(1)}" stroke="var(--line)"/>${bars}</svg><div class="tip"></div>`;
   const svg = el.querySelector('svg'), tip = el.querySelector('.tip');
+  // нажатие закрепляет подсказку у столбца до нажатия на другой; мышью — ещё и подсказка при наведении
+  let sel = -1;
+  const show = i => {
+    if (i < 0) { tip.classList.remove('on'); return; }
+    const r = svg.getBoundingClientRect();
+    tip.innerHTML = `<div class="muted">${esc(labels[i])}</div>` + series.map(s2 => `<div>${series.length > 1 ? `<i style="display:inline-block;width:8px;height:8px;border-radius:2px;background:${s2.color};margin-right:6px"></i>${esc(s2.name)}: ` : ''}<b class="num">${fmt(s2.values[i] || 0)}</b></div>`).join('');
+    tip.classList.add('on');
+    const cxp = (i * (bw + gap) + bw / 2) / W * r.width;
+    tip.style.left = Math.min(Math.max(0, cxp - tip.offsetWidth / 2), r.width - tip.offsetWidth) + 'px';
+    tip.style.top = '-8px';
+  };
+  svg.addEventListener('contextmenu', e => e.preventDefault());
   svg.querySelectorAll('.b').forEach(g => {
-    const on = () => {
-      const i = +g.dataset.i, r = svg.getBoundingClientRect();
-      tip.innerHTML = `<div class="muted">${esc(labels[i])}</div>` + series.map(s2 => `<div>${series.length > 1 ? `<i style="display:inline-block;width:8px;height:8px;border-radius:2px;background:${s2.color};margin-right:6px"></i>${esc(s2.name)}: ` : ''}<b class="num">${fmt(s2.values[i] || 0)}</b></div>`).join('');
-      tip.classList.add('on');
-      const cxp = (i * (bw + gap) + bw / 2) / W * r.width;
-      tip.style.left = Math.min(Math.max(0, cxp - tip.offsetWidth / 2), r.width - tip.offsetWidth) + 'px';
-      tip.style.top = '-8px';
-    };
-    g.addEventListener('pointerenter', on); g.addEventListener('pointerdown', on);
-    g.addEventListener('pointerleave', () => tip.classList.remove('on'));
+    const i = +g.dataset.i;
+    g.addEventListener('click', () => {
+      sel = i;
+      svg.classList.add('has-sel');
+      svg.querySelectorAll('.b.sel').forEach(x => x.classList.remove('sel'));
+      g.classList.add('sel');
+      show(i);
+    });
+    g.addEventListener('pointerenter', e => { if (e.pointerType === 'mouse') show(i); });
+    g.addEventListener('pointerleave', e => { if (e.pointerType === 'mouse') show(sel); });
   });
 }
 
@@ -862,7 +877,7 @@ function renderOverview() {
 
     <div class="card">
       <h2>Структура</h2>
-      <div class="chips">${[['class', 'Классы'], ['currency', 'Валюты'], ['account', 'Счета'], ['sector', 'Секторы']].map(a => `<button class="chip ${UI.alloc === a[0] ? 'on' : ''}" data-alloc="${a[0]}">${a[1]}</button>`).join('')}</div>
+      <div class="chips">${[['class', 'Классы'], ['currency', 'Валюты'], ['sector', 'Секторы'], ['account', 'Счета']].map(a => `<button class="chip ${UI.alloc === a[0] ? 'on' : ''}" data-alloc="${a[0]}">${a[1]}</button>`).join('')}</div>
       <div class="donut-wrap"><div id="donut" role="group" aria-label="Структура: нажмите на сектор"></div>
         <ul class="alloc">${alloc.map(a => `<li><i style="background:${a.color}"></i><span class="n">${esc(UI.alloc === 'account' ? (d.accounts[a.key] || {}).name || a.label : a.label)}</span><span class="p num">${pct(allocTotal ? a.value / allocTotal : 0)}</span></li>`).join('')}</ul>
       </div>
