@@ -10,13 +10,14 @@
  * GET /quotes?symbols=kase:KCEL,aix:KAP  → { quotes: [{symbol, price, currency, date, time}], errors: {symbol: message} }
  * GET /fx                                → { rates: [{date, base, quote: 'KZT', rate}] }
  * GET /health                            → какие источники настроены
+ * GET /raw?cmd=getStockQuotesJson&ticker=KCEL.KZ → ответ брокера как есть (только команды чтения котировок, для настройки)
  *
  * Переменные окружения (Settings → Variables; ключи — как Secret):
  *   ACCESS_TOKEN     — если задан, клиент должен прислать его в заголовке X-Access-Token
  *   ALLOWED_ORIGIN   — адрес приложения, например https://yeakhmetov.github.io (по умолчанию *)
  *   TN_API_KEY       — публичный ключ API Freedom / Tradernet (котировки KASE и AIX)
  *   TN_SECRET        — секретный ключ API Freedom / Tradernet
- *   TN_API_URL       — адрес API, по умолчанию https://tradernet.com/api
+ *   TN_API_URL       — адрес API, по умолчанию https://tradernet.com/api (запрос идёт на <адрес>/<команда>)
  *   TN_SUFFIX_KASE   — суффикс тикеров KASE у брокера, по умолчанию .KZ
  *   TN_SUFFIX_AIX    — суффикс тикеров AIX у брокера, по умолчанию .AIX
  */
@@ -68,6 +69,15 @@ export async function handle(request, env, fetchFn) {
       }));
       return json(out);
     }
+    if (url.pathname === '/raw') {
+      // только команды чтения котировок — через прокси нельзя ни торговать, ни смотреть счёт
+      const cmd = url.searchParams.get('cmd') || 'getStockQuotesJson';
+      if (!RAW_CMDS[cmd]) return json({ error: 'command not allowed' }, 400);
+      const ticker = (url.searchParams.get('ticker') || '').trim();
+      if (!/^[A-Za-z0-9_.\-]{1,24}$/.test(ticker)) return json({ error: 'bad ticker' }, 400);
+      if (!env.TN_API_KEY || !env.TN_SECRET) return json({ error: 'source not configured' }, 400);
+      return json(await tradernet(cmd, RAW_CMDS[cmd](ticker), env, fetchFn));
+    }
     return json({ error: 'not found' }, 404);
   } catch (e) {
     return json({ error: String(e && e.message || e) }, 502);
@@ -92,28 +102,57 @@ async function cached(key, fn) {
 
 /* ---------- KASE и AIX через API Freedom / Tradernet ---------- */
 
+const RAW_CMDS = {
+  getStockQuotesJson: t => ({ tickers: t }),
+  getSecurityInfo: t => ({ ticker: t, sup: true })
+};
+
 async function quote(sym, env, fetchFn) {
-  const [source, ticker] = sym.split(':');
-  if (!ticker || !/^[A-Z0-9_.\-]{1,20}$/.test(ticker)) throw new Error('bad symbol');
+  const i = sym.indexOf(':');
+  const source = sym.slice(0, i), ticker = sym.slice(i + 1);
+  if (i < 1 || !/^[A-Za-z0-9_.\-]{1,24}$/.test(ticker)) throw new Error('bad symbol');
   if (source !== 'kase' && source !== 'aix') throw new Error('unknown source');
   if (!env.TN_API_KEY || !env.TN_SECRET) throw new Error('source not configured');
   const suffix = source === 'kase' ? (env.TN_SUFFIX_KASE != null ? env.TN_SUFFIX_KASE : '.KZ') : (env.TN_SUFFIX_AIX != null ? env.TN_SUFFIX_AIX : '.AIX');
-  const brokerTicker = ticker.includes('.') ? ticker : ticker + suffix;
-  const d = await tradernet('quotes.getInfo', { ticker: brokerTicker }, env, fetchFn);
-  return parseTradernetQuote(sym, d);
+  // сначала тикер с суффиксом биржи, затем как есть
+  const variants = ticker.includes('.') ? [ticker] : [ticker + suffix, ticker];
+  let lastErr = null;
+  for (const t of variants) {
+    try {
+      const d = await tradernet('getStockQuotesJson', { tickers: t }, env, fetchFn);
+      const q = parseTradernetQuote(sym, d);
+      if (q) return q;
+    } catch (e) { lastErr = e; }
+  }
+  if (lastErr) throw lastErr;
+  return null;
+}
+
+// ищет в ответе объект котировки: {result:{q:[…]}}, {q:[…]}, [ … ] или сам объект
+function findQuote(d) {
+  if (!d || typeof d !== 'object') return null;
+  if (Array.isArray(d)) return d.find(x => x && typeof x === 'object' && (x.ltp != null || x.l != null || x.pp != null)) || null;
+  if (d.ltp != null || d.l != null || (d.pp != null && d.c)) return d;
+  for (const k of ['result', 'q', 'quotes', 'data']) {
+    if (d[k] != null) { const r = findQuote(d[k]); if (r) return r; }
+  }
+  return null;
 }
 
 export function parseTradernetQuote(sym, d) {
-  if (!d || d.error || d.errMsg) throw new Error((d && (d.errMsg || d.error)) || 'empty response');
-  const price = Number(d.l != null ? d.l : d.pp);
-  if (!(price > 0)) return null;
-  const t = typeof d.ltt === 'string' ? d.ltt : '';
+  if (!d) throw new Error('empty response');
+  if (d.errMsg || d.error) throw new Error(String(d.errMsg || d.error));
+  const q = findQuote(d);
+  if (!q) return null;
+  const price = [q.ltp, q.l, q.lp, q.pp, q.close].map(Number).find(v => v > 0);
+  if (!price) return null;
+  const t = typeof q.ltt === 'string' ? q.ltt : '';
   return {
     symbol: sym,
     price,
-    currency: normalizeCurrency(d.curr || d.x_curr || null),
+    currency: normalizeCurrency(q.x_curr || q.curr || q.currency || null),
     date: /^\d{4}-\d{2}-\d{2}/.test(t) ? t.slice(0, 10) : null,
-    time: /T?\d{2}:\d{2}/.test(t) ? t.match(/(\d{2}:\d{2})/)[1] : null
+    time: /\d{2}:\d{2}/.test(t) ? t.match(/(\d{2}:\d{2})/)[1] : null
   };
 }
 
@@ -123,14 +162,6 @@ function normalizeCurrency(c) {
   return c === 'RUR' || c === 'SUR' ? 'RUB' : c;
 }
 
-// строка для подписи: ключи по алфавиту, «ключ=значение» через &, вложенные объекты — рекурсивно
-export function preSign(data) {
-  return Object.keys(data).sort().map(k => {
-    const v = data[k];
-    return v !== null && typeof v === 'object' ? k + '=' + preSign(v) : k + '=' + v;
-  }).join('&');
-}
-
 export async function hmacSha256Hex(secret, message) {
   const enc = new TextEncoder();
   const key = await crypto.subtle.importKey('raw', enc.encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
@@ -138,23 +169,24 @@ export async function hmacSha256Hex(secret, message) {
   return Array.from(new Uint8Array(sig)).map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
-// запрос к API Tradernet, протокол v2: POST /v2/cmd/<cmd>, подпись HMAC-SHA256 в заголовке X-NtApi-Sig
-async function tradernet(cmd, params, env, fetchFn) {
+// запрос к API Tradernet, протокол v3 (как в официальном tradernet-sdk):
+// POST <адрес>/<команда>, тело — JSON параметров без пробелов,
+// подпись HMAC-SHA256 от «тело + время в секундах» секретным ключом
+export async function tradernet(cmd, params, env, fetchFn) {
   const base = (env.TN_API_URL || 'https://tradernet.com/api').replace(/\/+$/, '');
-  const payload = { apiKey: env.TN_API_KEY, cmd, nonce: Date.now() * 10, params };
-  const sig = await hmacSha256Hex(env.TN_SECRET, preSign(payload));
-  const body = new URLSearchParams();
-  body.set('apiKey', payload.apiKey);
-  body.set('cmd', cmd);
-  body.set('nonce', String(payload.nonce));
-  Object.keys(params).forEach(k => body.set('params[' + k + ']', params[k]));
-  const r = await fetchFn(base + '/v2/cmd/' + cmd, {
+  const body = JSON.stringify(params || {});
+  const ts = String(Math.floor(Date.now() / 1000));
+  const sig = await hmacSha256Hex(env.TN_SECRET, body + ts);
+  const r = await fetchFn(base + '/' + cmd, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-NtApi-Sig': sig },
-    body: body.toString()
+    headers: { 'Content-Type': 'application/json', 'X-NtApi-PublicKey': env.TN_API_KEY, 'X-NtApi-Timestamp': ts, 'X-NtApi-Sig': sig },
+    body
   });
-  if (!r.ok) throw new Error('broker API HTTP ' + r.status);
-  return r.json();
+  const text = await r.text();
+  let d;
+  try { d = JSON.parse(text); } catch (e) { throw new Error('broker API HTTP ' + r.status + (text ? ': ' + text.slice(0, 120) : '')); }
+  if (!r.ok && !(d && (d.errMsg || d.error))) throw new Error('broker API HTTP ' + r.status);
+  return d;
 }
 
 /* ---------- Национальный банк РК ---------- */
