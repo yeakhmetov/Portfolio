@@ -249,7 +249,116 @@
     return out;
   }
 
-  const api = { templateToData, applyImport, KNOWN };
+  /* ---------- отчёт брокера по комиссиям ---------- */
+
+  // «Отчет по комиссиям» (Alatau City Invest): лист «ОТЧЕТ», строки сделок с комиссией брокера,
+  // итоги комиссий третьих сторон (биржи, депозитарии, кастодиан) и начислено/оплачено за период
+  function isFeeReport(book) {
+    const sh = book && book.sheets && book.sheets['ОТЧЕТ'];
+    return !!(sh && /отчет по комиссиям/i.test(String(sh.cells.A1 || '')));
+  }
+
+  function hash(s) {
+    let h1 = 5381, h2 = 52711;
+    for (let i = 0; i < s.length; i++) { const c = s.charCodeAt(i); h1 = (h1 * 33) ^ c; h2 = (h2 * 33) ^ c; }
+    return (h1 >>> 0).toString(36) + (h2 >>> 0).toString(36);
+  }
+
+  /*
+   * Комиссии из отчёта → операции «Комиссия» в тенге.
+   * Комиссия брокера — отдельной операцией на дату сделки, комиссии третьих сторон — итогом за год
+   * на конец периода (для текущего года — на opts.today). У каждой операции постоянный id
+   * из содержимого строки, поэтому повторная загрузка того же или обновлённого отчёта не создаёт дублей.
+   * Возвращает { ok, error, year, from, to, txs, totals: { broker, third, accrued, paid, debtStart, debtEnd }, warnings }
+   */
+  function feeReportToTxs(book, opts) {
+    opts = opts || {};
+    if (!isFeeReport(book)) return { ok: false, error: 'Это не отчёт брокера по комиссиям' };
+    const sh = book.sheets['ОТЧЕТ'], cell = (c, r) => sh.cells[c + r];
+    let from = null, to = null;
+    const totals = { broker: 0, third: 0, accrued: null, paid: null, debtStart: null, debtEnd: null };
+    const txs = [], seen = {}, warnings = [], third = [];
+    const KZT = v => money(v, 'KZT');
+    for (let r = 1; r <= sh.maxRow; r++) {
+      const a = cell('A', r), b = cell('B', r), h = toNum(cell('H', r));
+      if (typeof b === 'string' && /отчет составлен на/i.test(b)) {
+        const m = String(cell('C', r) || '').match(/(\d\d\.\d\d\.\d{4})\s*-\s*(\d\d\.\d\d\.\d{4})/);
+        if (m) { from = C.parseDateAny(m[1]); to = C.parseDateAny(m[2]); }
+      }
+      if (typeof a === 'string' && /^\d\d\.\d\d\.\d{4}$/.test(a.trim())) {
+        if (!(h > 0)) continue;
+        const date = C.parseDateAny(a.trim());
+        const kind = String(b || '').replace(/\s+/g, ' ').trim();
+        const sec = String(cell('C', r) || '').trim();
+        const ticker = sec.replace(/-[A-Z]{2}[A-Z0-9]{9}\d$/, '').replace(/_US$|^US_|_+$/g, '').replace(/_/g, '').trim() || sec;
+        const base = [date, kind, sec, cell('D', r), cell('E', r), h].join('|');
+        seen[base] = (seen[base] || 0) + 1;
+        txs.push({ id: 'fee-' + hash(base + '|' + seen[base]), type: 'fee', date, currency: 'KZT', amount: KZT(h),
+          note: 'Комиссия брокера: ' + kind.toLowerCase().replace(/\s*\/.*$/, '') + ' ' + ticker });
+        totals.broker += h;
+        continue;
+      }
+      if (typeof a !== 'string') continue;
+      const label = a.replace(/\s+/g, ' ').trim();
+      if (/^(Сумма комиссии|Комиссия|Прочие комиссии)/.test(label) && h > 0) third.push([label, h]);
+      if (/^Итого комиссия Брокера/i.test(label) && h != null && Math.abs(h - totals.broker) > 0.005) {
+        warnings.push(`Сумма комиссий брокера по строкам (${totals.broker.toFixed(2)} ₸) не совпадает с итогом в отчёте (${h} ₸)`);
+      }
+      const v = toNum(cell('B', r));
+      if (/^Задолженность на начало/.test(label)) totals.debtStart = v;
+      if (/^Начислено за период/.test(label)) totals.accrued = v;
+      if (/^Оплачено за период/.test(label)) totals.paid = v;
+      if (/^Задолженность на конец/.test(label)) totals.debtEnd = v;
+    }
+    if (!from || !to) return { ok: false, error: 'В отчёте не найден период' };
+    const year = from.slice(0, 4);
+    const today = opts.today || C.today();
+    const thirdDate = to < today ? to : today;
+    third.forEach(([label, v]) => {
+      const who = label.replace(/^(Сумма комиссии|Комиссия)\s*/i, '').replace(/^АО\s*/, '');
+      txs.push({ id: 'fee-' + hash('third|' + from + '|' + label), type: 'fee', date: thirdDate, currency: 'KZT', amount: KZT(v),
+        note: 'Комиссии за ' + year + ' год: ' + (who || label) });
+      totals.third += v;
+    });
+    if (totals.accrued != null && Math.abs(totals.broker + totals.third - totals.accrued) > 0.05) {
+      warnings.push(`Начислено в отчёте ${totals.accrued} ₸, а по строкам ${(totals.broker + totals.third).toFixed(2)} ₸`);
+    }
+    return { ok: true, year, from, to, txs, totals, warnings };
+  }
+
+  const RECON = /^Сверка с выпиской брокера/;
+
+  /*
+   * Добавляет комиссии из отчёта на счёт. Операция с тем же id заменяется (итоги текущего года растут),
+   * новые — добавляются. На сумму прибавки уменьшается «сверка с выпиской» в тенге — разовая комиссия,
+   * которой импорт шаблона закрывал разницу остатка денег с выпиской; если она исчерпана, она удаляется.
+   * Возвращает { state, added, updated, same, recon: { before, after } }
+   */
+  function applyFeeReport(state, rep, accountId, opts) {
+    opts = opts || {};
+    const byId = {};
+    state.txs.forEach(t => { byId[t.id] = t; });
+    let added = 0, updated = 0, same = 0, delta = 0, seq = state.seq || 0;
+    const repl = {}, fresh = [];
+    rep.txs.forEach(t => {
+      const old = byId[t.id];
+      if (!old) { fresh.push(Object.assign({}, t, { accountId, seq: ++seq })); added++; delta += t.amount; return; }
+      if (old.amount === t.amount && old.date === t.date) { same++; return; }
+      repl[t.id] = Object.assign({}, old, { date: t.date, amount: t.amount, note: t.note });
+      updated++; delta += t.amount - old.amount;
+    });
+    let txs = state.txs.map(t => repl[t.id] || t).concat(fresh);
+    const reconTxs = txs.filter(t => t.type === 'fee' && t.accountId === accountId && t.currency === 'KZT' && RECON.test(t.note || ''));
+    const before = reconTxs.reduce((s, t) => s + t.amount, 0);
+    let left = Math.max(0, delta);
+    const cut = {};
+    reconTxs.forEach(t => { const take = Math.min(left, t.amount); left -= take; cut[t.id] = t.amount - take; });
+    txs = txs.filter(t => !(t.id in cut) || cut[t.id] > 0).map(t => (t.id in cut) ? Object.assign({}, t, { amount: cut[t.id] }) : t);
+    const after = reconTxs.reduce((s, t) => s + (cut[t.id] || 0), 0);
+    return { state: Object.assign({}, state, { txs, seq }), added, updated, same, recon: { before, after } };
+  }
+
+  const api = { templateToData, applyImport, KNOWN, isFeeReport, feeReportToTxs, applyFeeReport };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.PortfolioTemplate = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this);

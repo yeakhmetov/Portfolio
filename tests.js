@@ -649,6 +649,41 @@
     eq(/Неверный тикер/.test(bad({ kind: 'asset-settings', assets: [{ ticker: 'KCEL', quoteSymbol: 'a b<c' }] })), true);
   });
 
+  test('Отчёт по комиссиям: операции по датам, без дублей, вместо сверки с выпиской', function () {
+    function book(rows, maxRow) { var cells = {}; Object.keys(rows).forEach(function (k) { cells[k] = rows[k]; }); return { sheets: { 'ОТЧЕТ': { cells: cells, maxRow: maxRow } }, names: ['ОТЧЕТ'] }; }
+    var b = book({
+      A1: 'Отчет по комиссиям', B5: 'Отчет составлен на:', C5: '01.01.2025-31.12.2025',
+      A8: '13.01.2025', B8: 'Покупка', C8: 'KSPI-KZ1C00001536', D8: 1, E8: 54400, F8: 54400, G8: 'KZT', H8: 16.32,
+      A9: '05.02.2025', B9: 'Покупка', C9: 'AIRA-KZ1C00004050', D9: 41, E9: 767, F9: 31447, G9: 'KZT', H9: 0,
+      A10: '14.02.2025', B10: 'Продажа', C10: 'US_KO__-US1912161007', D10: 1, E10: 67.18, F10: 33447.58, G10: 'USD', H10: 10.03,
+      A11: '14.02.2025', B11: 'Продажа', C11: 'US_KO__-US1912161007', D11: 1, E11: 67.18, F11: 33447.58, G11: 'USD', H11: 10.03,
+      A12: 'Итого комиссия Брокера за сделки', H12: 36.38,
+      A13: 'Сумма комиссии АО "Казахстанская фондовая биржа"', H13: 5.5,
+      A14: 'Комиссия AIX за сделки', H14: 0,
+      A16: 'Начислено за период:', B16: 41.88, A17: 'Оплачено за период:', B17: 41.88
+    }, 17);
+    eq(TP.isFeeReport(b), true);
+    var r = TP.feeReportToTxs(b, { today: '2026-11-14' });
+    eq(r.ok, true); eq(r.year, '2025'); eq(r.warnings.length, 0, r.warnings.join());
+    eq(r.txs.length, 4, 'три сделки с комиссией и одна строка биржи');
+    eq(r.txs[0].date, '2025-01-13'); eq(r.txs[0].amount, 1632); eq(r.txs[0].currency, 'KZT'); eq(r.txs[0].note, 'Комиссия брокера: покупка KSPI');
+    eq(r.txs[1].note, 'Комиссия брокера: продажа KO');
+    eq(r.txs[1].id !== r.txs[2].id, true, 'одинаковые строки — разные операции');
+    eq(r.txs[3].date, '2025-12-31'); eq(r.txs[3].amount, 550);
+    var st = { seq: 2, txs: [
+      { id: 'x', type: 'deposit', date: '2025-01-01', accountId: 'acc', currency: 'KZT', amount: 10000000 },
+      { id: 'rec', type: 'fee', date: '2026-11-14', accountId: 'acc', currency: 'KZT', amount: 5000, note: 'Сверка с выпиской брокера: комиссии и прочие списания' }
+    ] };
+    var a = TP.applyFeeReport(st, r, 'acc');
+    eq(a.added, 4); eq(a.recon.before, 5000); eq(a.recon.after, 812);
+    eq(a.state.txs.find(function (t) { return t.id === 'rec'; }).amount, 812);
+    var cash = function (s) { return C.computePortfolio(s.txs, {}).cash.acc.KZT; };
+    eq(cash(a.state), cash(st), 'остаток денег не меняется, пока сверки хватает');
+    var again = TP.applyFeeReport(a.state, r, 'acc');
+    eq(again.added, 0); eq(again.same, 4); eq(again.state.txs.length, a.state.txs.length, 'повторная загрузка без дублей');
+    eq(TP.feeReportToTxs(book({ A1: 'Другое' }, 1)).ok, false);
+  });
+
   /* ---------- вывод ---------- */
 
   var done = Promise.all(pending).then(function () {
