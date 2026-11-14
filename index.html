@@ -255,9 +255,12 @@ body.privacy header.top,body.privacy main,body.privacy nav.tabs,body.privacy .fa
 
 <input type="file" id="file-json" accept=".json,application/json" hidden>
 <input type="file" id="file-csv" accept=".csv,.txt,text/csv,text/plain" hidden>
+<input type="file" id="file-xlsx" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" hidden>
 <script>try{const t=JSON.parse(localStorage.getItem('portfolio:settings')||'{}').theme;if(t==='light'||t==='dark')document.documentElement.setAttribute('data-theme',t)}catch(_){}</script>
 <script src="core.js"></script>
 <script src="quotes.js"></script>
+<script src="xlsx.js"></script>
+<script src="template.js"></script>
 <script>
 'use strict';
 const C = window.PortfolioCore;
@@ -1264,6 +1267,8 @@ function renderMore() {
       <p class="hint" style="margin:0 0 10px">Данные хранятся только на этом устройстве${Store.mode === 'idb' ? '' : Store.mode === 'local' ? ' (запасное хранилище браузера)' : ' — <b class="down">и сейчас не сохраняются</b>'}. ${S.settings.lastBackupAt ? 'Последняя копия: ' + fdate(S.settings.lastBackupAt.slice(0, 10), true) + '.' : 'Копий ещё не было.'}</p>
       <div class="btn-row"><button class="btn primary" data-act="export-json">Сохранить копию</button><button class="btn" data-act="import-json">Восстановить</button></div>
       <div class="btn-row"><button class="btn" data-act="export-csv">Операции в CSV</button><button class="btn" data-act="import-csv">Импорт CSV</button></div>
+      <button class="btn block" style="margin-top:10px" data-act="import-xlsx">Импорт из Excel-шаблона</button>
+      <p class="hint" style="margin:6px 0 0">Шаблон учёта брокерского счёта (.xlsx): история операций счёта заменяется данными из файла.</p>
     </div>
     <div class="card">
       <h2>Защита</h2>
@@ -1437,6 +1442,92 @@ function csvSheet() {
   sh.querySelectorAll('[data-csvmap]').forEach(sel => sel.addEventListener('change', () => { const top = sh.scrollTop; ci.map[sel.dataset.csvmap] = +sel.value; csvSheet(); sh.scrollTop = top; }));
   document.getElementById('csv-acc').addEventListener('change', e => { const top = sh.scrollTop; ci.accountId = e.target.value; csvSheet(); sh.scrollTop = top; });
   document.getElementById('csv-cur').addEventListener('change', e => { const top = sh.scrollTop; ci.currency = e.target.value; csvSheet(); sh.scrollTop = top; });
+}
+
+/* ---------- импорт из Excel-шаблона ---------- */
+
+const TP = window.PortfolioTemplate;
+let xlsxImport = null;
+document.getElementById('file-xlsx').addEventListener('change', async e => {
+  const f = e.target.files[0]; e.target.value = '';
+  if (!f) return;
+  let book;
+  try { book = await window.PortfolioXlsx.readXlsx(await f.arrayBuffer()); }
+  catch (err) { toast(err.message || 'Не удалось прочитать файл'); return; }
+  const imp = TP.templateToData(book, { uid: C.uid, seqStart: S.seq });
+  if (!imp.ok) { toast(imp.error); return; }
+  const broker = (imp.report.broker || '').toLowerCase();
+  const match = S.accounts.find(a => !a.archived && broker && (a.name.toLowerCase().includes(broker) || (a.broker || '').toLowerCase().includes(broker)));
+  const lone = !S.demo && S.accounts.length === 1 && !S.txs.length ? S.accounts[0] : null;
+  xlsxImport = { imp, file: f.name, accountId: S.demo ? '__new' : match ? match.id : lone ? lone.id : '__new' };
+  xlsxSheet();
+});
+
+// состояние после импорта (без сохранения) — для предпросмотра и для применения
+function xlsxState() {
+  const { imp, accountId } = xlsxImport;
+  let base = S.demo ? Object.assign(emptyState(), { settings: S.settings, targets: S.targets }) : S;
+  let accId = accountId;
+  if (accId === '__new' || !base.accounts.some(a => a.id === accId)) {
+    accId = 'acc-' + C.uid();
+    const name = imp.report.broker || 'Брокерский счёт';
+    base = Object.assign({}, base, { accounts: base.accounts.concat([{ id: accId, name, broker: imp.report.broker || '', type: 'broker', currency: 'KZT', archived: false, trackCash: true }]) });
+  }
+  const st = TP.applyImport(base, imp, accId);
+  // счёт по умолчанию без операций получает имя брокера из шаблона
+  st.accounts = st.accounts.map(a => a.id === accId && a.name === 'Брокерский счёт' && imp.report.broker ? Object.assign({}, a, { name: imp.report.broker, broker: imp.report.broker }) : a);
+  return { st, accId };
+}
+
+function xlsxSheet() {
+  const { imp, file, accountId } = xlsxImport, rep = imp.report, base = S.settings.baseCurrency;
+  const { st } = xlsxState();
+  // итог на дату отчёта — для сравнения с листом «Доходность»
+  const date = rep.date, fx = C.makeFx(st.fx), latest = {};
+  Object.keys(st.prices).forEach(id => { const l = st.prices[id].filter(p => p.date <= date); if (l.length) latest[id] = l[l.length - 1]; });
+  const state = C.computePortfolio(st.txs, { method: 'avg' });
+  const ctx = { assets: byId(st.assets), accounts: byId(st.accounts), prices: latest, fx, base, date };
+  const sum = C.summarize(state, ctx);
+  const x = C.xirr(C.investorFlows(st.txs, sum, { fx, base, date, cash: state.cash, accounts: ctx.accounts }));
+  const replaced = accountId !== '__new' ? S.txs.filter(t => t.accountId === accountId).length : 0;
+  const accName = accountId === '__new' ? (rep.broker || 'Брокерский счёт') : (S.accounts.find(a => a.id === accountId) || {}).name;
+  openSheet(`<div class="sh"><h2 id="sheet-title">Импорт из Excel</h2><button class="iconbtn" data-act="close" aria-label="Закрыть">✕</button></div>
+    <p class="hint" style="margin:0 0 10px">${esc(file)} · отчёт на ${fdate(date, true)}${rep.broker ? ' · ' + esc(rep.broker) : ''}</p>
+    <div class="card"><div class="stats" style="margin-top:0">
+      <div><div class="label">Сделок</div><div class="v num">${rep.counts.trades}</div></div>
+      <div><div class="label">Пополнений и выводов</div><div class="v num">${rep.counts.cash}</div></div>
+      <div><div class="label">Дивидендов и купонов</div><div class="v num">${rep.counts.payouts}</div></div>
+      <div><div class="label">Бумаг</div><div class="v num">${rep.counts.assets}</div></div>
+    </div></div>
+    <div class="card">
+      <div class="label">После импорта на ${fdate(date, true)}</div>
+      <div class="hero num" style="font-size:24px">${money(sum.total, base, { digits: 0 })}</div>
+      <div class="label">Доходность (XIRR): <b class="num">${x == null ? '—' : pct(x, true)}</b>${state.errors.length ? ` · <span class="down">ошибок в операциях: ${state.errors.length}</span>` : ''}</div>
+      <p class="hint" style="margin:8px 0 0">Сравните с листом «Доходность» в файле: «ИТОГО стоимость портфеля» и «XIRR номинальный».</p>
+    </div>
+    <label class="field"><span>Счёт</span><select class="input" id="xlsx-acc">${S.demo ? '' : S.accounts.filter(a => !a.archived).map(a => `<option value="${a.id}" ${a.id === accountId ? 'selected' : ''}>${esc(a.name)}</option>`).join('')}<option value="__new" ${accountId === '__new' ? 'selected' : ''}>Новый счёт «${esc(rep.broker || 'Брокерский счёт')}»</option></select></label>
+    ${replaced ? `<p class="err" style="margin:0 0 10px">Все операции счёта «${esc(accName)}» (${replaced}) будут заменены историей из файла.</p>` : ''}
+    ${S.demo ? '<p class="hint" style="margin:0 0 10px">Демо-данные будут удалены.</p>' : ''}
+    ${rep.recon.length ? `<p class="hint" style="margin:0 0 10px">Сверка с выпиской: добавлена комиссия ${rep.recon.map(r => C.formatMoney(r.amount, r.currency)).join(' и ')} — в шаблоне нет комиссий, а остаток денег у брокера фактический.</p>` : ''}
+    ${imp.warnings.map(w => `<p class="err" style="margin:0 0 10px">${esc(w)}</p>`).join('')}
+    ${imp.skipped.length ? `<p class="err" style="margin:0 0 4px">Пропущено строк: ${imp.skipped.length}</p><ul class="hint" style="margin:0 0 10px;padding-left:18px">${imp.skipped.slice(0, 6).map(x => `<li>«${esc(x.sheet)}», строка ${x.row}: ${esc(x.message)}</li>`).join('')}</ul>` : ''}
+    ${S.settings.method !== 'avg' ? '<p class="hint" style="margin:0 0 10px">Себестоимость будет считаться по средней цене, как в шаблоне.</p>' : ''}
+    <button class="btn primary block" data-act="xlsx-go">Импортировать</button>`);
+  document.getElementById('xlsx-acc').addEventListener('change', e => { const sh = document.getElementById('sheet'), top = sh.scrollTop; xlsxImport.accountId = e.target.value; xlsxSheet(); sh.scrollTop = top; });
+}
+
+function xlsxCommit() {
+  if (!xlsxImport) return;
+  const replaced = xlsxImport.accountId !== '__new' ? S.txs.filter(t => t.accountId === xlsxImport.accountId).length : 0;
+  if (replaced && !confirm(`Заменить ${replaced} операций счёта историей из файла?`)) return;
+  const { st } = xlsxState();
+  const n = xlsxImport.imp.txs.length;
+  S = hydrate(Object.assign({}, st, { demo: false }));
+  S.settings.method = 'avg';
+  xlsxImport = null;
+  closeSheet(); commit();
+  toast('Загружено операций: ' + n);
+  Quotes.update();
 }
 
 function csvCommit() {
@@ -1928,6 +2019,8 @@ document.addEventListener('click', e => {
     case 'export-csv': download('portfolio-operations-' + C.today() + '.csv', C.txsToCSV(S), 'text/csv;charset=utf-8'); break;
     case 'import-json': document.getElementById('file-json').click(); break;
     case 'import-csv': document.getElementById('file-csv').click(); break;
+    case 'import-xlsx': document.getElementById('file-xlsx').click(); break;
+    case 'xlsx-go': xlsxCommit(); break;
     case 'restore': restoreBackup(act.dataset.mode); break;
     case 'csv-go': csvCommit(); break;
     case 'refresh-quotes': Quotes.update({ force: true, manual: true }); break;
