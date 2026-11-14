@@ -23,7 +23,7 @@
     CRYPTO: ['crypto']
   };
 
-  var SOURCE_LABELS = { kase: 'KASE', aix: 'AIX', moex: 'MOEX', global: 'Twelve Data', crypto: 'CoinGecko', nbk: 'Нацбанк РК', er: 'open.er-api', manual: 'Вручную', demo: 'Демо' };
+  var SOURCE_LABELS = { kase: 'KASE', aix: 'AIX', moex: 'MOEX', global: 'Twelve Data', crypto: 'CoinGecko', nbk: 'Нацбанк РК', er: 'open.er-api', manual: 'Вручную', trade: 'Сделка', demo: 'Демо' };
 
   var COINS = {
     BTC: 'bitcoin', ETH: 'ethereum', USDT: 'tether', USDC: 'usd-coin', BNB: 'binancecoin', SOL: 'solana', XRP: 'ripple',

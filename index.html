@@ -255,13 +255,19 @@ body.privacy header.top,body.privacy main,body.privacy nav.tabs,body.privacy .fa
 
 <input type="file" id="file-json" accept=".json,application/json" hidden>
 <input type="file" id="file-csv" accept=".csv,.txt,text/csv,text/plain" hidden>
+<input type="file" id="file-xlsx" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" hidden>
 <script>try{const t=JSON.parse(localStorage.getItem('portfolio:settings')||'{}').theme;if(t==='light'||t==='dark')document.documentElement.setAttribute('data-theme',t)}catch(_){}</script>
 <script src="core.js"></script>
 <script src="quotes.js"></script>
+<script src="xlsx.js"></script>
+<script src="template.js"></script>
 <script>
 'use strict';
 const C = window.PortfolioCore;
 const QT = window.PortfolioQuotes;
+// приложение запущено как Android-приложение (Capacitor), а не в браузере
+const NATIVE = !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
+const nativePlugin = name => window.Capacitor.Plugins[name] || window.Capacitor.registerPlugin(name);
 
 /* ================= справочники ================= */
 
@@ -510,8 +516,13 @@ function derive() {
   const ctx = { assets, accounts, fx, base, date, prices: pricesAt(date) };
   const sum = C.summarize(state, ctx);
   const yd = addDays(date, -1);
-  // если вчерашней цены нет (бумага куплена сегодня), изменение за день по ней нулевое
-  const sumY = C.summarize(state, Object.assign({}, ctx, { prices: Object.assign({}, ctx.prices, pricesAt(yd)), date: yd }));
+  // изменение за день: сравниваем с ценой предыдущих торгов (не старше 4 дней — с учётом выходных).
+  // Если такой цены нет (бумага куплена сегодня или до этого была только цена сделки месяцы назад),
+  // изменение по бумаге нулевое
+  const prevPrices = Object.assign({}, ctx.prices);
+  const prevAll = pricesAt(yd), oldest = addDays(date, -4);
+  Object.keys(prevAll).forEach(id => { if (prevAll[id].date >= oldest) prevPrices[id] = prevAll[id]; });
+  const sumY = C.summarize(state, Object.assign({}, ctx, { prices: prevPrices, date: yd }));
   const flows = C.investorFlows(S.txs, sum, { fx, base, date, cash: state.cash, accounts });
   const flowsNoEnd = C.investorFlows(S.txs, { rows: [] }, { fx, base, date, cash: {}, accounts });
   const contributed = -flowsNoEnd.reduce((s, f) => s + f.amount, 0);
@@ -728,7 +739,8 @@ function renderOverview() {
   const allocTotal = alloc.reduce((a, b) => a + b.value, 0);
   const movers = s.rows.filter(r => r.hasPrice).map(r => {
     const py = priceAt(r.assetId, addDays(d.date, -1));
-    return { r, ch: py && py.price ? r.price.price / py.price - 1 : 0 };
+    const fresh = py && py.price && py.date >= addDays(d.date, -4);
+    return { r, ch: fresh ? r.price.price / py.price - 1 : 0 };
   });
   const seen = new Set();
   const byAsset = movers.filter(m => { if (seen.has(m.r.assetId)) return false; seen.add(m.r.assetId); return true; });
@@ -1255,6 +1267,8 @@ function renderMore() {
       <p class="hint" style="margin:0 0 10px">Данные хранятся только на этом устройстве${Store.mode === 'idb' ? '' : Store.mode === 'local' ? ' (запасное хранилище браузера)' : ' — <b class="down">и сейчас не сохраняются</b>'}. ${S.settings.lastBackupAt ? 'Последняя копия: ' + fdate(S.settings.lastBackupAt.slice(0, 10), true) + '.' : 'Копий ещё не было.'}</p>
       <div class="btn-row"><button class="btn primary" data-act="export-json">Сохранить копию</button><button class="btn" data-act="import-json">Восстановить</button></div>
       <div class="btn-row"><button class="btn" data-act="export-csv">Операции в CSV</button><button class="btn" data-act="import-csv">Импорт CSV</button></div>
+      <button class="btn block" style="margin-top:10px" data-act="import-xlsx">Импорт из Excel-шаблона</button>
+      <p class="hint" style="margin:6px 0 0">Шаблон учёта брокерского счёта (.xlsx): история операций счёта заменяется данными из файла.</p>
     </div>
     <div class="card">
       <h2>Защита</h2>
@@ -1292,7 +1306,21 @@ function addAccountSheet() {
 
 /* ================= резервная копия и импорт ================= */
 
+// Android-приложение: встроенный браузер не скачивает файлы, поэтому файл сохраняется во временную
+// папку и открывается системное меню «Поделиться» — сохранить на Диск, в «Файлы» или отправить себе
+async function nativeShareFile(name, text) {
+  const written = await nativePlugin('Filesystem').writeFile({ path: name, data: text, directory: 'CACHE', encoding: 'utf8' });
+  try {
+    await nativePlugin('Share').share({ title: name, files: [written.uri], dialogTitle: 'Сохранить или отправить файл' });
+    return true;
+  } catch (e) {
+    if (/cancel/i.test(String(e && e.message))) return false;
+    throw e;
+  }
+}
+
 function download(name, text, mime) {
+  if (NATIVE) return nativeShareFile(name, text).catch(e => { console.error(e); toast('Не удалось сохранить файл: ' + (e && e.message || e)); return false; });
   const blob = new Blob([text], { type: mime });
   let file = null;
   try { file = new File([blob], name, { type: mime }); } catch (e) { /* старый Safari */ }
@@ -1414,6 +1442,92 @@ function csvSheet() {
   sh.querySelectorAll('[data-csvmap]').forEach(sel => sel.addEventListener('change', () => { const top = sh.scrollTop; ci.map[sel.dataset.csvmap] = +sel.value; csvSheet(); sh.scrollTop = top; }));
   document.getElementById('csv-acc').addEventListener('change', e => { const top = sh.scrollTop; ci.accountId = e.target.value; csvSheet(); sh.scrollTop = top; });
   document.getElementById('csv-cur').addEventListener('change', e => { const top = sh.scrollTop; ci.currency = e.target.value; csvSheet(); sh.scrollTop = top; });
+}
+
+/* ---------- импорт из Excel-шаблона ---------- */
+
+const TP = window.PortfolioTemplate;
+let xlsxImport = null;
+document.getElementById('file-xlsx').addEventListener('change', async e => {
+  const f = e.target.files[0]; e.target.value = '';
+  if (!f) return;
+  let book;
+  try { book = await window.PortfolioXlsx.readXlsx(await f.arrayBuffer()); }
+  catch (err) { toast(err.message || 'Не удалось прочитать файл'); return; }
+  const imp = TP.templateToData(book, { uid: C.uid, seqStart: S.seq });
+  if (!imp.ok) { toast(imp.error); return; }
+  const broker = (imp.report.broker || '').toLowerCase();
+  const match = S.accounts.find(a => !a.archived && broker && (a.name.toLowerCase().includes(broker) || (a.broker || '').toLowerCase().includes(broker)));
+  const lone = !S.demo && S.accounts.length === 1 && !S.txs.length ? S.accounts[0] : null;
+  xlsxImport = { imp, file: f.name, accountId: S.demo ? '__new' : match ? match.id : lone ? lone.id : '__new' };
+  xlsxSheet();
+});
+
+// состояние после импорта (без сохранения) — для предпросмотра и для применения
+function xlsxState() {
+  const { imp, accountId } = xlsxImport;
+  let base = S.demo ? Object.assign(emptyState(), { settings: S.settings, targets: S.targets }) : S;
+  let accId = accountId;
+  if (accId === '__new' || !base.accounts.some(a => a.id === accId)) {
+    accId = 'acc-' + C.uid();
+    const name = imp.report.broker || 'Брокерский счёт';
+    base = Object.assign({}, base, { accounts: base.accounts.concat([{ id: accId, name, broker: imp.report.broker || '', type: 'broker', currency: 'KZT', archived: false, trackCash: true }]) });
+  }
+  const st = TP.applyImport(base, imp, accId);
+  // счёт по умолчанию без операций получает имя брокера из шаблона
+  st.accounts = st.accounts.map(a => a.id === accId && a.name === 'Брокерский счёт' && imp.report.broker ? Object.assign({}, a, { name: imp.report.broker, broker: imp.report.broker }) : a);
+  return { st, accId };
+}
+
+function xlsxSheet() {
+  const { imp, file, accountId } = xlsxImport, rep = imp.report, base = S.settings.baseCurrency;
+  const { st } = xlsxState();
+  // итог на дату отчёта — для сравнения с листом «Доходность»
+  const date = rep.date, fx = C.makeFx(st.fx), latest = {};
+  Object.keys(st.prices).forEach(id => { const l = st.prices[id].filter(p => p.date <= date); if (l.length) latest[id] = l[l.length - 1]; });
+  const state = C.computePortfolio(st.txs, { method: 'avg' });
+  const ctx = { assets: byId(st.assets), accounts: byId(st.accounts), prices: latest, fx, base, date };
+  const sum = C.summarize(state, ctx);
+  const x = C.xirr(C.investorFlows(st.txs, sum, { fx, base, date, cash: state.cash, accounts: ctx.accounts }));
+  const replaced = accountId !== '__new' ? S.txs.filter(t => t.accountId === accountId).length : 0;
+  const accName = accountId === '__new' ? (rep.broker || 'Брокерский счёт') : (S.accounts.find(a => a.id === accountId) || {}).name;
+  openSheet(`<div class="sh"><h2 id="sheet-title">Импорт из Excel</h2><button class="iconbtn" data-act="close" aria-label="Закрыть">✕</button></div>
+    <p class="hint" style="margin:0 0 10px">${esc(file)} · отчёт на ${fdate(date, true)}${rep.broker ? ' · ' + esc(rep.broker) : ''}</p>
+    <div class="card"><div class="stats" style="margin-top:0">
+      <div><div class="label">Сделок</div><div class="v num">${rep.counts.trades}</div></div>
+      <div><div class="label">Пополнений и выводов</div><div class="v num">${rep.counts.cash}</div></div>
+      <div><div class="label">Дивидендов и купонов</div><div class="v num">${rep.counts.payouts}</div></div>
+      <div><div class="label">Бумаг</div><div class="v num">${rep.counts.assets}</div></div>
+    </div></div>
+    <div class="card">
+      <div class="label">После импорта на ${fdate(date, true)}</div>
+      <div class="hero num" style="font-size:24px">${money(sum.total, base, { digits: 0 })}</div>
+      <div class="label">Доходность (XIRR): <b class="num">${x == null ? '—' : pct(x, true)}</b>${state.errors.length ? ` · <span class="down">ошибок в операциях: ${state.errors.length}</span>` : ''}</div>
+      <p class="hint" style="margin:8px 0 0">Сравните с листом «Доходность» в файле: «ИТОГО стоимость портфеля» и «XIRR номинальный».</p>
+    </div>
+    <label class="field"><span>Счёт</span><select class="input" id="xlsx-acc">${S.demo ? '' : S.accounts.filter(a => !a.archived).map(a => `<option value="${a.id}" ${a.id === accountId ? 'selected' : ''}>${esc(a.name)}</option>`).join('')}<option value="__new" ${accountId === '__new' ? 'selected' : ''}>Новый счёт «${esc(rep.broker || 'Брокерский счёт')}»</option></select></label>
+    ${replaced ? `<p class="err" style="margin:0 0 10px">Все операции счёта «${esc(accName)}» (${replaced}) будут заменены историей из файла.</p>` : ''}
+    ${S.demo ? '<p class="hint" style="margin:0 0 10px">Демо-данные будут удалены.</p>' : ''}
+    ${rep.recon.length ? `<p class="hint" style="margin:0 0 10px">Сверка с выпиской: добавлена комиссия ${rep.recon.map(r => C.formatMoney(r.amount, r.currency)).join(' и ')} — в шаблоне нет комиссий, а остаток денег у брокера фактический.</p>` : ''}
+    ${imp.warnings.map(w => `<p class="err" style="margin:0 0 10px">${esc(w)}</p>`).join('')}
+    ${imp.skipped.length ? `<p class="err" style="margin:0 0 4px">Пропущено строк: ${imp.skipped.length}</p><ul class="hint" style="margin:0 0 10px;padding-left:18px">${imp.skipped.slice(0, 6).map(x => `<li>«${esc(x.sheet)}», строка ${x.row}: ${esc(x.message)}</li>`).join('')}</ul>` : ''}
+    ${S.settings.method !== 'avg' ? '<p class="hint" style="margin:0 0 10px">Себестоимость будет считаться по средней цене, как в шаблоне.</p>' : ''}
+    <button class="btn primary block" data-act="xlsx-go">Импортировать</button>`);
+  document.getElementById('xlsx-acc').addEventListener('change', e => { const sh = document.getElementById('sheet'), top = sh.scrollTop; xlsxImport.accountId = e.target.value; xlsxSheet(); sh.scrollTop = top; });
+}
+
+function xlsxCommit() {
+  if (!xlsxImport) return;
+  const replaced = xlsxImport.accountId !== '__new' ? S.txs.filter(t => t.accountId === xlsxImport.accountId).length : 0;
+  if (replaced && !confirm(`Заменить ${replaced} операций счёта историей из файла?`)) return;
+  const { st } = xlsxState();
+  const n = xlsxImport.imp.txs.length;
+  S = hydrate(Object.assign({}, st, { demo: false }));
+  S.settings.method = 'avg';
+  xlsxImport = null;
+  closeSheet(); commit();
+  toast('Загружено операций: ' + n);
+  Quotes.update();
 }
 
 function csvCommit() {
@@ -1823,6 +1937,11 @@ function setInert() {
   ['header.top', 'main', 'nav.tabs', '#fab'].forEach(sel => { document.querySelector(sel).inert = sheetOn || Lock.on; });
   document.getElementById('sheet').inert = !sheetOn || Lock.on;
 }
+let sheetInHistory = false;
+window.addEventListener('popstate', () => {
+  if (document.getElementById('sheet').classList.contains('on')) closeSheet(true);
+  else sheetInHistory = false;
+});
 function openSheet(html) {
   const sh = document.getElementById('sheet');
   if (!sh.classList.contains('on')) lastFocus = document.activeElement;
@@ -1833,13 +1952,16 @@ function openSheet(html) {
   else { sh.removeAttribute('aria-labelledby'); sh.setAttribute('aria-label', 'Окно'); }
   sh.classList.add('on'); document.getElementById('sheet-bg').classList.add('on');
   setInert();
+  // запись в истории: системная кнопка «Назад» закрывает шторку, а не приложение
+  if (!sheetInHistory) { history.pushState({ sheet: true }, ''); sheetInHistory = true; }
   const first = sh.querySelector('input:not([type=hidden]),select,button:not([data-act=close])');
   setTimeout(() => (first || sh).focus && (first || sh).focus({ preventScroll: true }), 50);
 }
-function closeSheet() {
+function closeSheet(fromBack) {
   if (!document.getElementById('sheet').classList.contains('on')) return;
   document.getElementById('sheet').classList.remove('on'); document.getElementById('sheet-bg').classList.remove('on');
   setInert();
+  if (sheetInHistory) { sheetInHistory = false; if (fromBack !== true) history.back(); }
   if (lastFocus && lastFocus.focus) lastFocus.focus({ preventScroll: true });
 }
 
@@ -1897,6 +2019,8 @@ document.addEventListener('click', e => {
     case 'export-csv': download('portfolio-operations-' + C.today() + '.csv', C.txsToCSV(S), 'text/csv;charset=utf-8'); break;
     case 'import-json': document.getElementById('file-json').click(); break;
     case 'import-csv': document.getElementById('file-csv').click(); break;
+    case 'import-xlsx': document.getElementById('file-xlsx').click(); break;
+    case 'xlsx-go': xlsxCommit(); break;
     case 'restore': restoreBackup(act.dataset.mode); break;
     case 'csv-go': csvCommit(); break;
     case 'refresh-quotes': Quotes.update({ force: true, manual: true }); break;
@@ -1940,7 +2064,7 @@ document.getElementById('fab').addEventListener('click', () => openTxForm());
 document.getElementById('eye').addEventListener('click', () => { S.settings.hideAmounts = !S.settings.hideAmounts; render(); Store.save(S); });
 if (window.matchMedia) matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => render());
 
-if ('serviceWorker' in navigator && location.protocol !== 'file:') navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).catch(() => {});
+if (!NATIVE && 'serviceWorker' in navigator && location.protocol !== 'file:') navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).catch(() => {});
 
 (async () => {
   await Store.init();

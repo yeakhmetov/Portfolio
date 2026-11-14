@@ -7,6 +7,14 @@
   'use strict';
   var C = typeof require !== 'undefined' ? require('./core.js') : root.PortfolioCore;
   var QT = typeof require !== 'undefined' ? require('./quotes.js') : root.PortfolioQuotes;
+  var XL = typeof require !== 'undefined' ? require('./xlsx.js') : root.PortfolioXlsx;
+  var TP = typeof require !== 'undefined' ? require('./template.js') : root.PortfolioTemplate;
+  // образец Excel-шаблона: в Node — с диска, в браузере — запросом
+  function loadFixture() {
+    var path = 'tests/fixtures/template-sample.xlsx';
+    if (typeof require !== 'undefined') return Promise.resolve(require('fs').readFileSync(require('path').join(__dirname, path)));
+    return fetch(path).then(function (r) { return r.arrayBuffer(); });
+  }
   var results = [], pending = [];
 
   // тест может вернуть Promise — тогда результат фиксируется по его завершении
@@ -482,6 +490,86 @@
       eq(r[2], '35c56314f89066056408d6d269daf9e69217b9953215f286eec86cec3076271a', 'совпадает с эталоном SHA-256');
       return Promise.all([C.checkPin('2580', r[0]), C.checkPin('2581', r[0]), C.checkPin('2580', null)]);
     }).then(function (ok) { eq(ok.join(), 'true,false,false'); });
+  });
+
+  /* ---------- импорт из Excel-шаблона ---------- */
+
+  test('XLSX: листы, строки, числа и даты', function () {
+    return loadFixture().then(XL.readXlsx).then(function (book) {
+      eq(book.names.join(','), 'Инструкция,Параметры,Котировки,Сделки,Деньги,Дивиденды');
+      var P = book.sheets['Параметры'].cells;
+      eq(XL.excelDate(P.B4, book.date1904), '2026-03-31', 'дата из серийного номера');
+      eq(P.B6, 740.12);
+      eq(book.sheets['Котировки'].cells.B5, 'Kaspi.kz');
+      eq(book.sheets['Сделки'].cells.F6, 1.5);
+      eq(XL.excelDate(45658), '2025-01-01');
+    });
+  });
+
+  test('Шаблон: бумаги, сделки, деньги, выплаты и пропущенные строки', function () {
+    return loadFixture().then(XL.readXlsx).then(function (book) {
+      var r = TP.templateToData(book, { accountId: 'A' });
+      eq(r.ok, true, r.error);
+      eq(JSON.stringify(r.report.counts), '{"trades":9,"cash":4,"payouts":3,"assets":6}');
+      eq(r.report.broker, 'Тестовый брокер', 'брокер из инструкции');
+      eq(r.skipped.length, 2);
+      eq(r.skipped[0].sheet + ':' + r.skipped[0].row, 'Сделки:12', 'бумага не из справочника');
+      eq(r.skipped[1].sheet, 'Дивиденды', 'неизвестный эмитент');
+      var by = {}; r.assets.forEach(function (a) { by[a.id] = a; });
+      eq(by.KZ1C00001536.ticker, 'KSPI'); eq(by.KZ1C00001536.exchange, 'KASE');
+      eq(by.KZ2D99999991.class, 'bond'); eq(by.KZ2D99999991.quoteSource, 'manual', 'облигация без тикера — цена вручную');
+      eq(by.KZPF00000999.class, 'fund'); eq(by.US67066G1040.exchange, 'NASDAQ');
+      var div = r.txs.filter(function (t) { return t.type === 'dividend'; }).map(function (t) { return t.assetId; });
+      eq(div.join(','), 'KZ1C00001536,US67066G1040,KZ0009094645', 'дивиденд Казахтелекома — к бумаге, которая была в портфеле');
+      var fx = {}; r.fx.forEach(function (x) { fx[x.date] = x.rate; });
+      eq(fx['2025-02-20'], 480, 'курс не указан — средний за год');
+      eq(fx['2026-02-01'], 495, 'курс указан вручную');
+      eq(fx['2026-03-31'], 500, 'курс оценки на дату отчёта');
+    });
+  });
+
+  test('Шаблон: сверка остатков с выпиской и итог портфеля', function () {
+    return loadFixture().then(XL.readXlsx).then(function (book) {
+      var r = TP.templateToData(book, { accountId: 'A' });
+      eq(JSON.stringify(r.report.recon), '[{"currency":"KZT","amount":50000}]', 'комиссия 500 ₸ — разница с выпиской');
+      var st = C.computePortfolio(r.txs, { method: 'avg' });
+      eq(st.errors.length, 0);
+      eq(st.cash.A.KZT, M('85000'), 'остаток KZT как у брокера');
+      eq(st.cash.A.USD, 74012, 'остаток USD как у брокера');
+      eq(st.positions['A|KZPF00000999'].realized, M('1500'), 'прибыль по закрытому ПИФу');
+      eq(st.positions['A|KZ2D99999991'].qty, 0, 'облигация погашена');
+    });
+  });
+
+  test('Шаблон: импорт заменяет операции только выбранного счёта', function () {
+    return loadFixture().then(XL.readXlsx).then(function (book) {
+      var r = TP.templateToData(book, { seqStart: 10 });
+      var state = {
+        accounts: [{ id: 'A' }, { id: 'B' }],
+        assets: [{ id: 'KZ1C00001536', ticker: 'KSPI-MY', exchange: 'AIX', name: 'Kaspi' }],
+        txs: [{ id: 'old', accountId: 'A', type: 'deposit', date: '2020-01-01', amount: 1, currency: 'KZT', seq: 1 },
+          { id: 'keep', accountId: 'B', type: 'deposit', date: '2020-01-01', amount: 1, currency: 'KZT', seq: 2 }],
+        prices: { KZ1C00001536: [{ date: '2026-03-31', price: 1, source: 'manual' }, { date: '2026-04-01', price: 2, source: 'kase' }] },
+        fx: [], seq: 2
+      };
+      var out = TP.applyImport(state, r, 'A');
+      eq(out.txs.some(function (t) { return t.id === 'old'; }), false, 'старая история счёта A заменена');
+      eq(out.txs.some(function (t) { return t.id === 'keep'; }), true, 'счёт B не тронут');
+      eq(out.txs.filter(function (t) { return t.accountId === 'A'; }).length, r.txs.length);
+      var k = out.assets.filter(function (a) { return a.id === 'KZ1C00001536'; });
+      eq(k.length, 1); eq(k[0].ticker, 'KSPI-MY', 'настройки бумаги в приложении сохраняются');
+      eq(out.prices.KZ1C00001536.map(function (p) { return p.price; }).join(','), '40000,50000,2', 'цена сделки, цена из шаблона на дату отчёта, более новая — из приложения');
+      eq(out.seq >= 10 + r.txs.length, true);
+    });
+  });
+
+  test('Шаблон: чужой файл даёт понятную ошибку', function () {
+    var r = TP.templateToData({ sheets: { 'Лист1': { cells: {}, maxRow: 0 } }, names: ['Лист1'] });
+    eq(r.ok, false);
+    eq(/нет листов/.test(r.error), true, r.error);
+    return XL.readXlsx(new Uint8Array([1, 2, 3, 4]).buffer).then(function () { throw new Error('ожидалась ошибка'); }, function (e) {
+      eq(/Excel/.test(e.message), true, e.message);
+    });
   });
 
   /* ---------- вывод ---------- */

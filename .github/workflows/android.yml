@@ -1,0 +1,71 @@
+name: Android APK
+
+on:
+  push:
+    branches: [main, 'claude/**']
+    paths:
+      - 'index.html'
+      - 'core.js'
+      - 'quotes.js'
+      - 'manifest.webmanifest'
+      - '*.png'
+      - 'android/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'capacitor.config.json'
+      - 'scripts/**'
+      - '.github/workflows/android.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: android-apk
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: gradle
+
+      - run: npm ci
+      - run: npm test
+      - run: npm run android:sync
+
+      - name: Build APK
+        working-directory: android
+        env:
+          VERSION_CODE: ${{ github.run_number }}
+          VERSION_NAME: 1.1.${{ github.run_number }}
+        run: ./gradlew assembleRelease --no-daemon --stacktrace
+
+      - run: cp android/app/build/outputs/apk/release/app-release.apk portfolio.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: portfolio-apk
+          path: portfolio.apk
+
+      # одна постоянная ссылка на свежую сборку: releases/download/android-latest/portfolio.apk
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete android-latest --yes --cleanup-tag || true
+          gh release create android-latest portfolio.apk \
+            --title "Портфель для Android — сборка ${{ github.run_number }}" \
+            --notes "Версия 1.1.${{ github.run_number }} из ${GITHUB_REF_NAME} (${GITHUB_SHA::7}). Установка: скачайте portfolio.apk на телефоне и разрешите установку из этого источника. Обновление ставится поверх, данные сохраняются." \
+            --target "${GITHUB_SHA}" --latest
