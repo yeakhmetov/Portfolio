@@ -1,7 +1,8 @@
-// Офлайн-режим: приложение хранится на телефоне.
-// При наличии сети берётся свежая версия с сервера, без сети — сохранённая копия.
+// Офлайн-режим: приложение открывается мгновенно из копии на телефоне (как в «Расходах»).
+// Свежая версия файлов загружается в фоне и откроется при следующем запуске;
+// при смене VERSION новый Service Worker сразу перезапускает приложение.
 // Запросы к другим сайтам (котировки) не перехватываются, кроме шрифтов.
-const VERSION = 'portfolio-v4';
+const VERSION = 'portfolio-v5';
 const CORE = ['./', './index.html', './core.js', './quotes.js', './xlsx.js', './template.js', './manifest.webmanifest', './icon-192.png', './icon-512.png',
   './icon-192-maskable.png', './icon-512-maskable.png', './apple-touch-icon.png'];
 
@@ -27,18 +28,12 @@ self.addEventListener('fetch', e => {
     return;
   }
   if (url.origin !== location.origin) return;
+  if (url.pathname.endsWith('/sw.js')) return;
   e.respondWith((async () => {
     const c = await caches.open(VERSION);
-    try {
-      const ctrl = new AbortController();
-      const t = setTimeout(() => ctrl.abort(), 4000);
-      const r = await fetch(req, { cache: 'no-cache', signal: ctrl.signal });
-      clearTimeout(t);
-      if (r.ok) c.put(req, r.clone());
-      return r;
-    } catch (_) {
-      const hit = await c.match(req, { ignoreSearch: true }) || (req.mode === 'navigate' ? await c.match('./index.html') : null);
-      return hit || new Response('Нет сети', { status: 503 });
-    }
+    const hit = await c.match(req, { ignoreSearch: true }) || (req.mode === 'navigate' ? await c.match('./index.html') : null);
+    const fresh = fetch(req, { cache: 'no-cache' }).then(r => { if (r.ok) c.put(req, r.clone()); return r; });
+    if (hit) { e.waitUntil(fresh.catch(() => {})); return hit; }
+    try { return await fresh; } catch (_) { return new Response('Нет сети', { status: 503 }); }
   })());
 });

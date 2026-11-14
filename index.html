@@ -48,7 +48,7 @@ button{cursor:pointer}
 .num{font-variant-numeric:tabular-nums}
 .muted{color:var(--muted)}
 .up{color:var(--up)}.down{color:var(--down)}
-main{max-width:560px;margin:0 auto;padding:4px 14px calc(104px + env(safe-area-inset-bottom,0px))}
+main{max-width:560px;margin:0 auto;padding:4px 14px calc(160px + env(safe-area-inset-bottom,0px))}
 header.top{position:sticky;top:0;z-index:5;background:var(--bg);max-width:560px;margin:0 auto;padding:12px 14px 8px;
   display:flex;align-items:center;justify-content:space-between;gap:8px}
 header.top h1{font:700 20px/1.1 var(--display);margin:0;letter-spacing:-.01em}
@@ -66,12 +66,15 @@ header.top .acts{display:flex;gap:2px}
 .iconbtn svg{width:22px;height:22px}
 .screen{display:none}.screen.on{display:block}
 .card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:16px;margin-bottom:12px}
-.card h2{font:600 15px/1.3 var(--body);margin:0 0 10px}
+.card h2{font:600 16px/1.3 var(--body);margin:0 0 10px}
 .label{font-size:13px;color:var(--muted)}
-.hero{font:700 30px/1.1 var(--display);letter-spacing:-.02em;margin:4px 0 6px;word-break:break-word}
+.hero{font:700 32px/1.1 var(--display);letter-spacing:-.02em;margin:4px 0 6px;word-break:break-word}
 .row{display:flex;align-items:center;justify-content:space-between;gap:10px}
-.stats{display:grid;grid-template-columns:1fr 1fr;gap:10px 16px;margin-top:12px}
-.stats .v{font-weight:600}
+/* показатели — плитки, как в «Расходах» */
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}
+.stats>div{background:var(--bg);border-radius:12px;padding:10px 12px;min-width:0}
+.stats .label{font-size:12px;line-height:1.25}
+.stats .v{font-weight:600;margin-top:2px}
 .demo-note{font-size:13px;background:var(--soft);border-radius:12px;padding:10px 12px;margin-bottom:12px;display:flex;gap:10px;align-items:center;justify-content:space-between}
 .demo-note button{border:0;background:transparent;color:var(--accent);font-weight:600;padding:6px 0;min-height:32px}
 
@@ -81,7 +84,7 @@ header.top .acts{display:flex;gap:2px}
 .seg button.on{background:var(--card);color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.08)}
 .chips{display:flex;gap:6px;overflow-x:auto;padding:5px 0;scrollbar-width:none}
 .chips::-webkit-scrollbar{display:none}
-.chip{flex:none;border:1px solid var(--line);background:var(--card);border-radius:999px;padding:6px 12px;font-size:13px;min-height:34px;white-space:nowrap}
+.chip{flex:none;border:1px solid var(--line);background:var(--card);border-radius:999px;padding:7px 12px;font-size:13.5px;min-height:34px;white-space:nowrap}
 .chip.on{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
 
 /* графики */
@@ -94,7 +97,7 @@ header.top .acts{display:flex;gap:2px}
 .legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:6px;vertical-align:-1px}
 .legend i.dash{height:2px;border-radius:0;width:14px;background:none;border-top:2px dashed var(--muted);vertical-align:3px}
 .donut-wrap{display:grid;grid-template-columns:132px 1fr;gap:16px;align-items:center;margin-top:12px}
-.alloc{list-style:none;margin:0;padding:0;font-size:14px}
+.alloc{list-style:none;margin:0;padding:0;font-size:14.5px}
 .alloc li{display:flex;align-items:center;gap:8px;padding:4px 0}
 .alloc li i{width:10px;height:10px;border-radius:3px;flex:none}
 .alloc li .n{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -105,12 +108,12 @@ header.top .acts{display:flex;gap:2px}
 .item{display:flex;align-items:center;gap:12px;padding:10px 0;border-top:1px solid var(--line);min-height:56px}
 .item:first-child{border-top:0}
 .item.tap{cursor:pointer}
-.item .badge{width:40px;height:40px;border-radius:12px;background:var(--soft);display:grid;place-items:center;font:700 11px/1 var(--body);flex:none;letter-spacing:.02em;color:var(--ink);overflow:hidden}
+.item .badge{width:36px;height:36px;border-radius:10px;background:var(--soft);display:grid;place-items:center;font:700 11px/1 var(--body);flex:none;letter-spacing:.02em;color:var(--ink);overflow:hidden}
 .item .main{flex:1;min-width:0}
-.item .t{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.item .s{font-size:13px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.item .t{font-weight:600;font-size:14.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.item .s{font-size:12.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .item .r{text-align:right;flex:none}
-.item .r .t{font-weight:600}
+.item .r .t{font-weight:600;font-size:15px}
 .group-h{font-size:13px;color:var(--muted);font-weight:600;margin:14px 2px 6px}
 .empty{text-align:center;color:var(--muted);padding:28px 12px}
 .empty .btn{margin-top:12px}
@@ -137,12 +140,12 @@ header.top .acts{display:flex;gap:2px}
 nav.tabs{position:fixed;left:0;right:0;bottom:0;z-index:10;background:var(--card);border-top:1px solid var(--line);
   padding:4px 6px calc(4px + env(safe-area-inset-bottom,0px))}
 nav.tabs .in{max-width:560px;margin:0 auto;display:flex}
-nav.tabs button{flex:1;border:0;background:transparent;display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 0;min-height:52px;font-size:11px;color:var(--muted)}
-nav.tabs button svg{width:22px;height:22px}
+nav.tabs button{flex:1;border:0;background:transparent;display:flex;flex-direction:column;align-items:center;gap:2px;padding:9px 0 10px;min-height:56px;font-size:11.5px;color:var(--muted)}
+nav.tabs button svg{width:25px;height:25px;stroke-width:1.9}
 nav.tabs button.on{color:var(--accent);font-weight:600}
-.fab{position:fixed;z-index:11;right:max(16px,calc(50% - 264px));bottom:calc(76px + env(safe-area-inset-bottom,0px));width:56px;height:56px;border-radius:18px;border:0;
+.fab{position:fixed;z-index:11;right:max(18px,calc(50% - 262px));bottom:calc(80px + env(safe-area-inset-bottom,0px));width:62px;height:62px;border-radius:50%;border:0;
   background:var(--accent);color:var(--accent-ink);display:grid;place-items:center;box-shadow:0 6px 18px rgba(14,107,84,.35)}
-.fab svg{width:26px;height:26px}
+.fab svg{width:30px;height:30px}
 
 /* шторка */
 .sheet-bg{position:fixed;inset:0;z-index:20;background:rgba(0,0,0,.35);opacity:0;pointer-events:none;transition:opacity .18s}
@@ -187,14 +190,14 @@ nav.tabs button.on{color:var(--accent);font-weight:600}
   padding:env(safe-area-inset-top,0px) 16px env(safe-area-inset-bottom,0px);overflow-y:auto}
 .lock-in{text-align:center;width:100%;max-width:320px;padding:24px 0}
 .lock-in:focus{outline:none}
-.lock h2{font:700 20px/1.2 var(--display);margin:14px 0 18px}
+.lock h2{font:700 22px/1.2 var(--display);margin:14px 0 18px}
 .lock .logo{width:56px;height:56px;border-radius:16px;margin:0 auto;display:block}
 .dots{display:flex;justify-content:center;gap:14px;height:16px;margin-bottom:6px}
 .dots span{width:14px;height:14px;border-radius:50%;border:2px solid var(--ink)}
 .dots span.f{background:var(--ink)}
 .lock .err{min-height:22px;margin:6px 0 10px;text-align:center}
 .pad{display:grid;grid-template-columns:repeat(3,72px);gap:14px 22px;justify-content:center}
-.pad button{height:72px;width:72px;border-radius:50%;border:0;background:var(--card);box-shadow:inset 0 0 0 1px var(--line);font:600 26px/1 var(--body)}
+.pad button{height:72px;width:72px;border-radius:50%;border:0;background:var(--card);box-shadow:inset 0 0 0 1px var(--line);font:500 24px/1 var(--display)}
 .pad button:active{background:var(--soft)}
 .pad button:disabled{opacity:.4}
 .pad .blank{visibility:hidden}
@@ -202,6 +205,41 @@ nav.tabs button.on{color:var(--accent);font-weight:600}
 .shake{animation:shake .32s}
 @keyframes shake{20%,60%{transform:translateX(-8px)}40%,80%{transform:translateX(8px)}}
 body.privacy header.top,body.privacy main,body.privacy nav.tabs,body.privacy .fab,body.privacy .sheet{filter:blur(14px)}
+/* строки настроек, как в «Расходах» */
+.set-row{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 0;border-top:1px solid var(--line)}
+.set-row:first-of-type{border-top:0}
+.set-row>div{min-width:0}
+.set-row small{display:block;color:var(--muted);font-size:12.5px;line-height:1.3}
+.set-row .input{width:auto;min-height:40px;padding:6px 10px;font-size:15px}
+.btn.small{min-height:40px;padding:0 12px;font-size:14px;border-radius:12px;flex:none}
+/* выбор нескольких операций */
+.sw.picked .sw-c{background:var(--soft)}
+.sw.picked .badge{background:var(--accent)!important;color:var(--accent-ink)!important;font-size:0}
+.sw.picked .badge::after{content:'✓';font-size:18px;font-weight:700}
+body.selmode #s-ops .sw:not(.picked) .badge{opacity:.55}
+.selbar{position:fixed;left:0;right:0;bottom:0;z-index:12;background:var(--card);border-top:1px solid var(--line);
+  padding:10px 14px calc(10px + env(safe-area-inset-bottom,0px));display:none}
+body.selmode .selbar{display:block}
+body.selmode nav.tabs,body.selmode .fab{visibility:hidden}
+.selbar .in3{max-width:560px;margin:0 auto;display:flex;align-items:center;gap:8px}
+.selbar .info{flex:1;min-width:0;font-size:13.5px;line-height:1.25}
+.selbar .info b{display:block;font-size:15px}
+.item.sw,.sw-c{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+/* калькулятор в полях сумм */
+.calcbar{display:grid;grid-template-columns:repeat(8,1fr);gap:5px;margin-top:6px}
+.calcbar button{height:40px;border-radius:10px;border:1px solid var(--line);background:var(--bg);font:500 19px var(--body);color:var(--ink);padding:0;touch-action:manipulation}
+.calcbar button.eq{background:var(--soft);border-color:var(--accent);font-weight:700}
+.calc-res{min-height:18px;text-align:right;font-size:13px;color:var(--muted);margin-top:3px}
+.calc-res.err{color:var(--down)}
+/* выбранный сектор диаграммы */
+.donut-sel{min-height:22px;margin-top:8px;font-size:14px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.donut-sel i{width:10px;height:10px;border-radius:3px}
+#donut path{cursor:pointer;transition:opacity .15s}
+#donut.has-sel path:not(.sel){opacity:.35}
+/* подтверждение поверх экрана блокировки */
+body.ask-top .sheet-bg{z-index:70}
+body.ask-top .sheet{z-index:71}
+.pad .nb{background:none;box-shadow:none;font:600 14px/1.2 var(--body);color:var(--accent)}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 @media (max-width:380px){.hero{font-size:26px}.donut-wrap{grid-template-columns:110px 1fr}}
 </style>
@@ -239,6 +277,8 @@ body.privacy header.top,body.privacy main,body.privacy nav.tabs,body.privacy .fa
 <div class="sheet-bg" id="sheet-bg"></div>
 <div class="sheet" id="sheet" role="dialog" aria-modal="true" aria-label="Окно" inert></div>
 <div class="toast" id="toast" role="status"></div>
+<div class="selbar" id="selbar" role="region" aria-label="Выбранные операции"><div class="in3"><div class="info" aria-live="polite"><b id="sel-count"></b><span class="muted" id="sel-hint"></span></div>
+  <button class="btn small" data-act="sel-cancel">Отмена</button><button class="btn small danger" data-act="sel-del" style="background:var(--down);color:var(--card);border:0">Удалить</button></div></div>
 <div class="lock" id="lock" role="dialog" aria-modal="true" aria-labelledby="lock-title" hidden>
   <div class="lock-in" tabindex="-1">
     <img class="logo" src="icon-192.png" alt="" width="56" height="56">
@@ -247,7 +287,7 @@ body.privacy header.top,body.privacy main,body.privacy nav.tabs,body.privacy .fa
     <p class="sr" id="lock-count" aria-live="polite"></p>
     <p class="err" id="lock-err" role="alert"></p>
     <div class="pad" id="lock-pad">
-      <button data-key="1">1</button><button data-key="2">2</button><button data-key="3">3</button><button data-key="4">4</button><button data-key="5">5</button><button data-key="6">6</button><button data-key="7">7</button><button data-key="8">8</button><button data-key="9">9</button><button class="blank" tabindex="-1" aria-hidden="true"></button><button data-key="0">0</button><button data-key="del" aria-label="Стереть">⌫</button>
+      <button data-key="1">1</button><button data-key="2">2</button><button data-key="3">3</button><button data-key="4">4</button><button data-key="5">5</button><button data-key="6">6</button><button data-key="7">7</button><button data-key="8">8</button><button data-key="9">9</button><button class="nb" id="lock-bio" style="visibility:hidden">Отпечаток</button><button data-key="0">0</button><button data-key="del" aria-label="Стереть">⌫</button>
     </div>
     <button class="linkbtn" id="lock-forgot">Забыли PIN-код?</button>
   </div>
@@ -268,6 +308,13 @@ const QT = window.PortfolioQuotes;
 // приложение запущено как Android-приложение (Capacitor), а не в браузере
 const NATIVE = !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
 const nativePlugin = name => window.Capacitor.Plugins[name] || window.Capacitor.registerPlugin(name);
+const IS_IOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+// версия: в APK её подставляет сборка (scripts/build-www.mjs)
+const APP_VERSION = '1.2.0';
+const RELEASE_URL = 'https://github.com/yeakhmetov/Portfolio/releases/download/android-latest/portfolio.apk';
+const lsGet = k => { try { return localStorage.getItem(k); } catch (e) { return null; } };
+const lsSet = (k, v) => { try { localStorage.setItem(k, v); } catch (e) { /* хранилище недоступно */ } };
+const lsDel = k => { try { localStorage.removeItem(k); } catch (e) { /* хранилище недоступно */ } };
 
 /* ================= справочники ================= */
 
@@ -620,7 +667,7 @@ function donut(el, slices, centerLabel) {
     else { const [x1, y1] = p(a0, R), [x2, y2] = p(a1, R), [x3, y3] = p(a1, r), [x4, y4] = p(a0, r);
       d = `M${x1} ${y1}A${R} ${R} 0 ${large} 1 ${x2} ${y2}L${x3} ${y3}A${r} ${r} 0 ${large} 0 ${x4} ${y4}Z`; }
     a0 = a1;
-    return `<path d="${d}" fill="${s.color}" stroke="var(--card)" stroke-width="2"><title>${esc(s.label)}: ${pct(frac)}</title></path>`;
+    return `<path d="${d}" fill="${s.color}" stroke="var(--card)" stroke-width="2" data-k="${esc(s.key)}" class="${s.key === UI.allocSel ? 'sel' : ''}"><title>${esc(s.label)}: ${pct(frac)}</title></path>`;
   }).join('');
   el.innerHTML = `<svg viewBox="0 0 132 132" role="img" aria-label="Структура портфеля">${arcs || `<circle cx="${C0}" cy="${C0}" r="${(R + r) / 2}" fill="none" stroke="var(--soft)" stroke-width="${R - r}"/>`}
     <text x="${C0}" y="${C0 + 4}" text-anchor="middle" font-size="12" font-weight="600" fill="var(--muted)">${esc(centerLabel || '')}</text></svg>`;
@@ -774,9 +821,12 @@ function renderOverview() {
     <div class="card">
       <h2>Структура</h2>
       <div class="chips">${[['class', 'Классы'], ['currency', 'Валюты'], ['account', 'Счета'], ['sector', 'Секторы']].map(a => `<button class="chip ${UI.alloc === a[0] ? 'on' : ''}" data-alloc="${a[0]}">${a[1]}</button>`).join('')}</div>
-      <div class="donut-wrap"><div id="donut"></div>
+      <div class="donut-wrap"><div id="donut" role="group" aria-label="Структура: нажмите на сектор"></div>
         <ul class="alloc">${alloc.map(a => `<li><i style="background:${a.color}"></i><span class="n">${esc(UI.alloc === 'account' ? (d.accounts[a.key] || {}).name || a.label : a.label)}</span><span class="p num">${pct(allocTotal ? a.value / allocTotal : 0)}</span></li>`).join('')}</ul>
       </div>
+      <div class="donut-sel">${(() => { const a = alloc.find(x => x.key === UI.allocSel);
+        return a ? `<i style="background:${a.color}"></i><span>${esc(UI.alloc === 'account' ? (d.accounts[a.key] || {}).name || a.label : a.label)}</span><b class="num">${money(a.value, base, { digits: 0 })}</b><span class="muted num">${pct(allocTotal ? a.value / allocTotal : 0)}</span>`
+          : '<span class="muted" style="font-size:12.5px">Нажмите на сектор, чтобы увидеть сумму</span>'; })()}</div>
     </div>
 
     <div class="card">
@@ -788,7 +838,9 @@ function renderOverview() {
     { name: 'Стоимость', color: 'var(--s1)', values: hist.value },
     { name: 'Вложено', color: 'var(--muted)', dash: true, values: hist.invested }
   ], fmt);
+  if (UI.allocSel && !alloc.some(a => a.key === UI.allocSel)) UI.allocSel = null;
   donut(document.getElementById('donut'), alloc, '');
+  document.getElementById('donut').classList.toggle('has-sel', !!UI.allocSel);
 }
 
 /* ================= экран: позиции ================= */
@@ -1111,6 +1163,12 @@ function openTxForm(existing, preset) {
     const err = document.getElementById('tx-err');
     err.textContent = '';
     const fail = m => { err.textContent = m; };
+    // выражения калькулятора в полях сумм — заменить результатом или сообщить об ошибке
+    const CALC_NAMES = { amount: 'Сумма', price: 'Цена', fee: 'Комиссия', tax: 'Налог' };
+    for (const name of CALC_FIELDS) {
+      const inp = f[name];
+      if (inp && !inp.closest('.field').hidden && !Calc.resolve(false, inp)) return fail('Проверьте выражение в поле «' + CALC_NAMES[name] + '»');
+    }
     const type = f.type.value;
     const trade = type === 'buy' || type === 'sell';
     let assetId = f.assetId.value || null, newAsset = null;
@@ -1272,12 +1330,23 @@ function renderMore() {
     </div>
     <div class="card">
       <h2>Защита</h2>
-      ${!C.pinSupported() ? '<p class="hint" style="margin:0">PIN-код недоступен: браузер не поддерживает шифрование на этой странице (нужен адрес https://).</p>'
-        : st.pin ? `<p class="hint" style="margin:0 0 10px">PIN-код включён. Он скрывает данные от посторонних; сами данные на устройстве не шифруются.</p>
-        <label class="field"><span>Блокировать</span><select class="input" id="set-lock">${[[0, 'сразу при сворачивании'], [1, 'через 1 минуту'], [5, 'через 5 минут']].map(x => `<option value="${x[0]}" ${x[0] === (st.pin.lockAfter || 0) ? 'selected' : ''}>${x[1]}</option>`).join('')}</select></label>
-        <div class="btn-row"><button class="btn" data-act="pin-change">Изменить PIN</button><button class="btn danger" data-act="pin-off">Выключить</button></div>`
-        : `<p class="hint" style="margin:0 0 10px">PIN-код из 4–6 цифр при открытии приложения и после сворачивания. Данные на устройстве при этом не шифруются.</p>
-        <button class="btn block" data-act="pin-on">Включить PIN-код</button>`}
+      ${!C.pinSupported() ? '<p class="hint" style="margin:0">PIN-код недоступен: браузер не поддерживает шифрование на этой странице (нужен адрес https://).</p>' : `
+      <div class="set-row"><div>PIN-код<small>${st.pin ? 'Установлен (' + (st.pin.len || 4) + ' цифр)' : 'Не установлен'}</small></div>
+        <button class="btn small" data-act="${st.pin ? 'pin-change' : 'pin-on'}">${st.pin ? 'Изменить' : 'Установить'}</button></div>
+      <div class="set-row"><div>${Bio.label() === 'Face ID' ? 'Face ID' : 'Отпечаток пальца / Face ID'}<small>${Bio.enabled() ? 'Включён на этом устройстве' : 'Выключен'}</small></div>
+        <button class="btn small" data-act="bio-toggle" ${st.pin ? '' : 'disabled'}>${Bio.enabled() ? 'Выключить' : 'Включить'}</button></div>
+      <div class="set-row"><div>Автоблокировка<small>Через сколько после сворачивания снова спросить PIN-код</small></div>
+        <select class="input" id="set-lock" ${st.pin ? '' : 'disabled'} aria-label="Автоблокировка">${LOCK_OPTIONS.map(x => `<option value="${x[0]}" ${st.pin && x[0] === lockAfterSec() ? 'selected' : ''}>${x[1]}</option>`).join('')}</select></div>
+      <div class="set-row"><div>Заблокировать сейчас<small>Сразу закрыть приложение PIN-кодом</small></div>
+        <button class="btn small" data-act="lock-now" ${st.pin ? '' : 'disabled'}>Заблокировать</button></div>
+      ${st.pin ? '<div class="set-row"><div>Снять защиту<small>Выключить PIN-код и вход по отпечатку</small></div><button class="btn small danger" data-act="pin-off">Снять</button></div>' : ''}
+      <p class="hint" style="margin:8px 0 0">PIN-код скрывает данные от посторонних; сами данные на устройстве не шифруются. Если забыть PIN-код, данные придётся удалить и восстановить из резервной копии.</p>`}
+    </div>
+
+    <div class="card">
+      <h2>О приложении</h2>
+      <div class="set-row"><div>Версия приложения<small>${esc(APP_VERSION)} · ${NATIVE ? 'Android' : 'веб-версия'}</small></div><button class="btn small" data-act="app-update">Обновить</button></div>
+      <p class="hint" style="margin:6px 0 0">${NATIVE ? '«Обновить» откроет загрузку свежего APK — установите его поверх, записи сохранятся.' : '«Обновить» загружает свежую версию с сервера. Записи при этом не затрагиваются.'}</p>
     </div>`;
 }
 
@@ -1309,6 +1378,7 @@ function addAccountSheet() {
 // Android-приложение: встроенный браузер не скачивает файлы, поэтому файл сохраняется во временную
 // папку и открывается системное меню «Поделиться» — сохранить на Диск, в «Файлы» или отправить себе
 async function nativeShareFile(name, text) {
+  expectSystemUI();
   const written = await nativePlugin('Filesystem').writeFile({ path: name, data: text, directory: 'CACHE', encoding: 'utf8' });
   try {
     await nativePlugin('Share').share({ title: name, files: [written.uri], dialogTitle: 'Сохранить или отправить файл' });
@@ -1322,19 +1392,53 @@ async function nativeShareFile(name, text) {
 function download(name, text, mime) {
   if (NATIVE) return nativeShareFile(name, text).catch(e => { console.error(e); toast('Не удалось сохранить файл: ' + (e && e.message || e)); return false; });
   const blob = new Blob([text], { type: mime });
-  let file = null;
-  try { file = new File([blob], name, { type: mime }); } catch (e) { /* старый Safari */ }
-  // на телефоне — системное меню «Поделиться» (сохранить в Файлы, отправить себе), на компьютере — скачивание
-  if (file && navigator.canShare && /iPhone|iPad|Android/i.test(navigator.userAgent) && navigator.canShare({ files: [file] })) {
-    return navigator.share({ files: [file], title: name }).then(() => true, e => e && e.name === 'AbortError' ? false : fallback());
+  const isCsv = /\.csv$/.test(name);
+  // Android пропускает в «Поделиться» не все типы файлов: JSON отправляем как текстовый файл
+  let shareFile = null;
+  if (navigator.share && navigator.canShare) {
+    const variants = isCsv ? [[name, 'text/csv'], [name, 'text/plain']] : [[name, mime], [name.replace(/\.json$/, '.json.txt'), 'text/plain']];
+    for (const [n, t] of variants) { try { const f = new File([text], n, { type: t }); if (navigator.canShare({ files: [f] })) { shareFile = f; break; } } catch (e) { /* нет File */ } }
   }
-  return Promise.resolve(fallback());
-  function fallback() {
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob); a.download = name;
-    document.body.appendChild(a); a.click();
-    setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1500);
-    return true;
+  const mobile = /iPhone|iPad|Android/i.test(navigator.userAgent);
+  if (!mobile) return Promise.resolve(saveToDownloads());
+  if (IS_IOS && shareFile) return navigator.share({ files: [shareFile], title: name }).then(() => true, () => false);
+  const canPick = typeof window.showSaveFilePicker === 'function';
+  return new Promise(res => {
+    openSheet(`<div class="sh"><h2 id="sheet-title" style="font:600 17px/1.3 var(--body);word-break:break-all">${esc(name)}</h2><button class="iconbtn" data-act="close" aria-label="Закрыть">✕</button></div>
+      <p class="hint" style="margin:0 0 14px">${canPick ? '«Сохранить» откроет окно выбора папки.' : '«Сохранить» положит файл в папку «Загрузки».'} «Отправить» откроет меню: Telegram, почта, Google Диск и другие.</p>
+      <div class="btn-row"><button class="btn" id="dl-save">Сохранить</button><button class="btn primary" id="dl-share" ${shareFile ? '' : 'disabled'}>Отправить</button></div>`);
+    let done = false;
+    const finish = v => { if (!done) { done = true; res(v); } };
+    document.getElementById('dl-save').onclick = async () => {
+      closeSheet();
+      if (canPick) {
+        try {
+          expectSystemUI();
+          const h = await window.showSaveFilePicker({ suggestedName: name, types: [isCsv ? { description: 'Таблица CSV', accept: { 'text/csv': ['.csv'] } } : { description: 'Резервная копия', accept: { 'application/json': ['.json'] } }] });
+          const w = await h.createWritable(); await w.write(blob); await w.close();
+          return finish(true);
+        } catch (e) { if (e && e.name === 'AbortError') return finish(false); }
+      }
+      finish(saveToDownloads());
+    };
+    // «Поделиться» вызывается прямо в обработчике нажатия, иначе Android его блокирует
+    document.getElementById('dl-share').onclick = () => {
+      if (!shareFile) return;
+      expectSystemUI();
+      navigator.share({ files: [shareFile], title: name }).then(() => { closeSheet(); finish(true); }, e => { closeSheet(); if (!(e && e.name === 'AbortError')) toast('Не удалось открыть меню «Поделиться» — сохраните файл'); finish(false); });
+    };
+    const obs = new MutationObserver(() => { if (!document.getElementById('sheet').classList.contains('on')) { obs.disconnect(); setTimeout(() => finish(false), 0); } });
+    obs.observe(document.getElementById('sheet'), { attributes: true, attributeFilter: ['class'] });
+  });
+  function saveToDownloads() {
+    try {
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob); a.download = name;
+      document.body.appendChild(a); a.click();
+      setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 4000);
+      if (mobile) toast('Файл сохранён в папку «Загрузки»');
+      return true;
+    } catch (e) { toast('Не удалось сохранить файл'); return false; }
   }
 }
 
@@ -1368,11 +1472,11 @@ document.getElementById('file-json').addEventListener('change', async e => {
     <div class="btn-row"><button class="btn" data-act="restore" data-mode="merge">Объединить</button><button class="btn primary" data-act="restore" data-mode="replace">Заменить</button></div>`);
 });
 
-function restoreBackup(mode) {
+async function restoreBackup(mode) {
   if (!pendingBackup) return;
   const data = pendingBackup.data;
   if (mode === 'replace') {
-    if (S.txs.length && !S.demo && !confirm('Текущие данные будут удалены. Продолжить?')) return;
+    if (S.txs.length && !S.demo && !(await ask('Заменить текущие данные копией?', 'Заменить', true, 'Текущие счета и операции будут удалены.'))) return;
     const keep = { proxyUrl: S.settings.proxyUrl, proxyToken: S.settings.proxyToken, twelveDataKey: S.settings.twelveDataKey, pin: S.settings.pin };
     S = hydrate(data);
     Object.keys(keep).forEach(k => { if (!S.settings[k]) S.settings[k] = keep[k]; });
@@ -1516,10 +1620,10 @@ function xlsxSheet() {
   document.getElementById('xlsx-acc').addEventListener('change', e => { const sh = document.getElementById('sheet'), top = sh.scrollTop; xlsxImport.accountId = e.target.value; xlsxSheet(); sh.scrollTop = top; });
 }
 
-function xlsxCommit() {
+async function xlsxCommit() {
   if (!xlsxImport) return;
   const replaced = xlsxImport.accountId !== '__new' ? S.txs.filter(t => t.accountId === xlsxImport.accountId).length : 0;
-  if (replaced && !confirm(`Заменить ${replaced} операций счёта историей из файла?`)) return;
+  if (replaced && !(await ask(`Заменить ${replaced} ${plural(replaced, 'операцию', 'операции', 'операций')} счёта историей из файла?`, 'Заменить', true))) return;
   const { st } = xlsxState();
   const n = xlsxImport.imp.txs.length;
   S = hydrate(Object.assign({}, st, { demo: false }));
@@ -1777,7 +1881,7 @@ function closeSwipe(li) {
   document.addEventListener('touchstart', e => {
     const el = e.target.closest('.sw');
     document.querySelectorAll('.sw.open').forEach(o => { if (o !== el) closeSwipe(o); });
-    if (!el || el.closest('#sheet') || e.target.closest('.sw-a')) { li = null; return; }
+    if (!el || el.closest('#sheet') || e.target.closest('.sw-a') || Sel.on) { li = null; return; }
     li = el; c = el.querySelector('.sw-c');
     x0 = e.touches[0].clientX; y0 = e.touches[0].clientY; dx = 0; mode = null;
     base = el.classList.contains('open') ? -SW_W : 0;
@@ -1807,8 +1911,59 @@ function closeSwipe(li) {
 
 /* ================= PIN-код и блокировка ================= */
 
+// Вход по отпечатку / Face ID. В браузере — WebAuthn (ключ платформы), в APK — нативный модуль.
+// Флаг хранится только на этом устройстве и не попадает в резервную копию.
+const Bio = {
+  KEY: 'portfolio:bio', busy: false, doneAt: 0,
+  label() { return IS_IOS ? 'Face ID' : 'Отпечаток'; },
+  enabled() { return !!lsGet(this.KEY); },
+  b64(buf) { return btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''); },
+  unb64(s) { s = s.replace(/-/g, '+').replace(/_/g, '/'); s += '='.repeat((4 - s.length % 4) % 4); return Uint8Array.from(atob(s), c => c.charCodeAt(0)); },
+  async available() {
+    try {
+      if (NATIVE) return !!(await nativePlugin('NativeBiometric').isAvailable()).isAvailable;
+      return !!(window.PublicKeyCredential && PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable && await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable());
+    } catch (e) { return false; }
+  },
+  async run(fn) {
+    this.busy = true;
+    try { return await fn(); } finally { this.busy = false; this.doneAt = Date.now(); }
+  },
+  async enable() {
+    if (!(await this.available())) throw new Error('unavailable');
+    if (NATIVE) {
+      await this.run(() => nativePlugin('NativeBiometric').verifyIdentity({ title: 'Портфель', subtitle: 'Подтвердите, чтобы включить вход по отпечатку', negativeButtonText: 'Отмена', maxAttempts: 3 }));
+      lsSet(this.KEY, 'native');
+      return;
+    }
+    const cred = await this.run(() => navigator.credentials.create({ publicKey: {
+      challenge: crypto.getRandomValues(new Uint8Array(32)), rp: { name: 'Портфель' },
+      user: { id: crypto.getRandomValues(new Uint8Array(16)), name: 'owner', displayName: 'Владелец' },
+      pubKeyCredParams: [{ type: 'public-key', alg: -7 }, { type: 'public-key', alg: -257 }],
+      authenticatorSelection: { authenticatorAttachment: 'platform', userVerification: 'required', residentKey: 'discouraged' }, timeout: 60000 } }));
+    lsSet(this.KEY, this.b64(cred.rawId));
+  },
+  disable() { lsDel(this.KEY); },
+  // бросает ошибку, если не подтверждено
+  async verify(reason) {
+    const id = lsGet(this.KEY);
+    if (!id) throw new Error('off');
+    if (NATIVE) return this.run(() => nativePlugin('NativeBiometric').verifyIdentity({ title: 'Портфель', subtitle: reason, negativeButtonText: 'Ввести PIN-код', maxAttempts: 3 }));
+    return this.run(() => navigator.credentials.get({ publicKey: { challenge: crypto.getRandomValues(new Uint8Array(32)),
+      allowCredentials: [{ type: 'public-key', id: this.unb64(id) }], userVerification: 'required', timeout: 60000 } }));
+  }
+};
+
+// автоблокировка, секунды: 0 — сразу, -1 — никогда (только при запуске)
+const LOCK_OPTIONS = [[0, 'Сразу'], [30, '30 секунд'], [60, '1 минута'], [300, '5 минут'], [900, '15 минут'], [3600, '1 час'], [-1, 'Никогда']];
+function lockAfterSec() {
+  const p = S.settings.pin || {};
+  if (p.lockAfterSec != null) return p.lockAfterSec;
+  return p.lockAfter != null ? p.lockAfter * 60 : 60;
+}
+
 const Lock = {
-  on: false, entry: '', fails: 0, until: 0, onUnlock: null, hiddenAt: 0, timer: null,
+  on: false, entry: '', fails: 0, until: 0, onUnlock: null, hiddenAt: 0, timer: null, skipUntil: 0, bioTried: false,
   has() { return !!(S && S.settings.pin && S.settings.pin.hash && C.pinSupported()); },
   show(cb) {
     this.on = true; this.entry = ''; this.onUnlock = cb || null;
@@ -1816,9 +1971,21 @@ const Lock = {
     document.getElementById('lock').hidden = false;
     document.body.classList.remove('privacy');
     setInert();
+    const bio = document.getElementById('lock-bio');
+    bio.textContent = Bio.label();
+    bio.style.visibility = Bio.enabled() ? 'visible' : 'hidden';
     this.draw();
     // фокус на сам экран: экранный диктор прочитает заголовок, цифры можно вводить с клавиатуры
     setTimeout(() => { const el = document.querySelector('.lock-in'); if (el) el.focus({ preventScroll: true }); }, 30);
+    // отпечаток предлагается сразу, один раз за показ экрана
+    this.bioTried = false;
+    if (Bio.enabled() && !document.hidden) setTimeout(() => { if (this.on && !this.bioTried) this.bio(); }, 250);
+  },
+  async bio() {
+    if (!this.on || Bio.busy || !Bio.enabled()) return;
+    this.bioTried = true;
+    try { await Bio.verify('Разблокировать «Портфель»'); this.fails = 0; this.entry = ''; this.hide(); }
+    catch (e) { this.draw(`Нажмите «${Bio.label()}», чтобы повторить, или введите PIN-код`); }
   },
   hide() {
     this.on = false;
@@ -1855,31 +2022,58 @@ const Lock = {
   }
 };
 document.getElementById('lock-pad').addEventListener('click', e => { const b = e.target.closest('[data-key]'); if (b) Lock.press(b.dataset.key); });
+document.getElementById('lock-bio').addEventListener('click', () => Lock.bio());
 document.addEventListener('keydown', e => {
   if (!Lock.on) return;
   if (/^[0-9]$/.test(e.key)) { e.preventDefault(); Lock.press(e.key); }
   else if (e.key === 'Backspace') { e.preventDefault(); Lock.press('del'); }
 }, true);
 document.getElementById('lock-forgot').addEventListener('click', async () => {
-  if (!confirm('PIN-код нельзя восстановить. Удалить все данные на этом устройстве и начать заново? Данные можно будет вернуть из резервной копии.')) return;
-  if (!confirm('Точно удалить все счета, операции и цены?')) return;
+  if (!(await ask('Удалить все данные на этом устройстве?', 'Удалить', true, 'PIN-код нельзя восстановить. После удаления данные можно вернуть из резервной копии.', true))) return;
+  if (!(await ask('Точно удалить все счета, операции и цены?', 'Удалить всё', true, '', true))) return;
   const theme = S.settings.theme;
   S = initialState(); S.settings.theme = theme;
   invalidate(); await Store.save(S);
   Lock.fails = 0; Lock.until = 0;
+  Bio.disable();
   Lock.hide();
   toast('Данные удалены, PIN-код выключен');
 });
+// скрыть данные на снимке экрана в списке открытых приложений
+function cloakOn() { if (S && Lock.has() && lockAfterSec() >= 0 && !Bio.busy) document.body.classList.add('privacy'); }
+// системные окна, открытые приложением (выбор файла, «Поделиться»), не блокируют его при возврате
+function expectSystemUI() { Lock.skipUntil = Date.now() + 10 * 60000; }
 document.addEventListener('visibilitychange', () => {
   if (!S) return;
+  if (Bio.busy) return; // окно отпечатка тоже сворачивает приложение
   if (document.visibilityState === 'hidden') {
     Lock.hiddenAt = Date.now();
-    // скрыть данные на снимке экрана в переключателе приложений
-    if (Lock.has()) document.body.classList.add('privacy');
-  } else if (Lock.has() && !Lock.on && Date.now() - Lock.hiddenAt >= (S.settings.pin.lockAfter || 0) * 60000) {
-    Lock.show();
-  } else document.body.classList.remove('privacy');
+    cloakOn();
+    return;
+  }
+  const skip = Date.now() < Lock.skipUntil || Date.now() - Bio.doneAt < 1500;
+  Lock.skipUntil = 0;
+  const sec = Lock.has() ? lockAfterSec() : -1;
+  if (!skip && Lock.has() && !Lock.on && sec >= 0 && Date.now() - Lock.hiddenAt >= sec * 1000) Lock.show();
+  else if (Lock.on && !Lock.bioTried && Bio.enabled()) { document.body.classList.remove('privacy'); Lock.bio(); }
+  else document.body.classList.remove('privacy');
 });
+window.addEventListener('blur', () => { const a = document.activeElement; if (a && /^(INPUT|SELECT|TEXTAREA)$/.test(a.tagName)) return; if (Date.now() < Lock.skipUntil) return; cloakOn(); });
+window.addEventListener('focus', () => { if (!document.hidden && !Lock.on) document.body.classList.remove('privacy'); });
+window.addEventListener('pagehide', cloakOn);
+document.addEventListener('freeze', cloakOn);
+
+async function toggleBio() {
+  if (Bio.enabled()) { Bio.disable(); render(); toast(Bio.label() + ' выключен'); return; }
+  if (!Lock.has()) { toast('Сначала установите PIN-код, он нужен как запасной вход'); return; }
+  try { await Bio.enable(); render(); toast(Bio.label() + ' включён'); }
+  catch (e) {
+    if (e && /cancel|abort|NotAllowed/i.test(String(e.name || '') + String(e.message || ''))) return;
+    openSheet(`<div class="sh"><h2 id="sheet-title">${Bio.label()} здесь недоступен</h2><button class="iconbtn" data-act="close" aria-label="Закрыть">✕</button></div>
+      <p class="hint" style="margin:0 0 14px">Телефон не дал доступ к биометрии. Проверьте, что на телефоне настроены отпечаток пальца или Face ID${NATIVE ? '' : ' и что приложение установлено на главный экран'}. PIN-код продолжает защищать приложение.</p>
+      <button class="btn primary block" data-act="close">Понятно</button>`);
+  }
+}
 
 function pinSheet(mode) {
   const titles = { on: 'Включить PIN-код', change: 'Изменить PIN-код', off: 'Выключить PIN-код' };
@@ -1896,14 +2090,214 @@ function pinSheet(mode) {
     e.preventDefault();
     const f = e.target, err = m => { document.getElementById('pin-err').textContent = m; };
     if (mode !== 'on' && !(await C.checkPin(f.cur.value, S.settings.pin))) return err('Неверный текущий PIN-код');
-    if (mode === 'off') { S.settings.pin = null; closeSheet(); commit(); toast('PIN-код выключен'); return; }
+    if (mode === 'off') { S.settings.pin = null; Bio.disable(); closeSheet(); commit(); toast('PIN-код выключен'); return; }
     if (!C.validPin(f.p1.value)) return err('PIN-код — от 4 до 6 цифр');
     if (f.p1.value !== f.p2.value) return err('PIN-коды не совпадают');
     const rec = await C.makePin(f.p1.value);
-    if (S.settings.pin) rec.lockAfter = S.settings.pin.lockAfter || 0;
+    rec.lockAfterSec = S.settings.pin ? lockAfterSec() : 60;
+    delete rec.lockAfter;
     S.settings.pin = rec;
     closeSheet(); commit(); toast(mode === 'on' ? 'PIN-код включён' : 'PIN-код изменён');
   });
+}
+
+/* ================= выбор нескольких операций (долгое нажатие) ================= */
+
+const Sel = {
+  on: false, ids: new Set(), lpTimer: null, lpXY: null, lpFired: false,
+  refresh() {
+    document.querySelectorAll('#s-ops .sw-c[data-tx]').forEach(el => el.closest('.sw').classList.toggle('picked', this.ids.has(el.dataset.tx)));
+    document.body.classList.toggle('selmode', this.on);
+    if (!this.on) return;
+    const n = this.ids.size;
+    document.getElementById('sel-count').textContent = 'Выбрано: ' + n + ' ' + plural(n, 'операция', 'операции', 'операций');
+    document.getElementById('sel-hint').textContent = 'Нажимайте на операции, чтобы выбрать';
+  },
+  pick(id) { if (!this.on) { this.on = true; this.ids.clear(); } this.ids.add(id); this.refresh(); },
+  toggle(id) { if (this.ids.has(id)) this.ids.delete(id); else this.ids.add(id); if (!this.ids.size) { this.exit(); return; } this.refresh(); },
+  exit() { if (!this.on && !this.ids.size) return; this.on = false; this.ids.clear(); this.refresh(); },
+  async del() {
+    const n = this.ids.size;
+    if (!n) return;
+    const word = plural(n, 'операцию', 'операции', 'операций');
+    if (!(await ask(`Удалить ${n} ${word}?`, 'Удалить', true, 'Сразу после удаления действие можно отменить.'))) return;
+    const removed = S.txs.filter(t => this.ids.has(t.id));
+    const before = derive().state.errors.length;
+    S.txs = S.txs.filter(t => !this.ids.has(t.id));
+    this.exit(); commit();
+    const worse = derive().state.errors.length > before;
+    toast(`Удалено: ${n} ${word}` + (worse ? '. Появились ошибки в операциях' : ''), 'Отменить', () => { S.txs.push(...removed); commit(); toast('Восстановлено'); });
+  }
+};
+document.addEventListener('pointerdown', e => {
+  const c = e.target.closest('#s-ops .sw-c[data-tx]');
+  if (!c) return;
+  Sel.lpFired = false; Sel.lpXY = [e.clientX, e.clientY];
+  clearTimeout(Sel.lpTimer);
+  Sel.lpTimer = setTimeout(() => {
+    if (c.closest('.sw.open')) return;
+    Sel.lpFired = true;
+    try { if (navigator.vibrate) navigator.vibrate(25); } catch (_) { /* нет вибрации */ }
+    Sel.pick(c.dataset.tx);
+  }, 500);
+});
+document.addEventListener('pointermove', e => { if (Sel.lpXY && Math.hypot(e.clientX - Sel.lpXY[0], e.clientY - Sel.lpXY[1]) > 10) clearTimeout(Sel.lpTimer); });
+['pointerup', 'pointercancel'].forEach(t => document.addEventListener(t, () => { clearTimeout(Sel.lpTimer); Sel.lpXY = null; }));
+document.addEventListener('scroll', () => clearTimeout(Sel.lpTimer), true);
+document.addEventListener('contextmenu', e => { if (e.target.closest('#s-ops .sw-c')) e.preventDefault(); });
+
+/* ================= калькулятор в полях сумм ================= */
+// В поле суммы, цены, комиссии или налога можно набрать выражение: 1500×12+300.
+// На телефонной цифровой клавиатуре нет знаков действий, поэтому под полем появляется строка кнопок.
+
+function hasOps(v) { return /[+−×÷()*\/:]/.test(String(v).replace(/^\s*[−-]/, '')); }
+function evalExpr(v) {
+  const src = String(v).replace(/[\s ]/g, '').replace(/,/g, '.').replace(/\*/g, '×').replace(/[\/:]/g, '÷').replace(/[-–—]/g, '−').replace(/[xXхХ]/g, '×');
+  if (!src) return NaN;
+  const tk = src.match(/\d*\.?\d+|\d+\.|[+−×÷()]/g);
+  if (!tk || tk.join('') !== src) return NaN;
+  let i = 0;
+  const num = () => { const t = tk[i]; if (t === undefined) throw 0; if (t === '(') { i++; const r = expr(); if (tk[i++] !== ')') throw 0; return r; } if (t === '−') { i++; return -num(); } if (t === '+') { i++; return num(); } if (/^[\d.]/.test(t)) { i++; return parseFloat(t); } throw 0; };
+  const term = () => { let r = num(); while (tk[i] === '×' || tk[i] === '÷') { const op = tk[i++], b = num(); if (op === '÷') { if (b === 0) throw 0; r /= b; } else r *= b; } return r; };
+  const expr = () => { let r = term(); while (tk[i] === '+' || tk[i] === '−') { const op = tk[i++], b = term(); r = op === '+' ? r + b : r - b; } return r; };
+  try { const r = expr(); return i === tk.length && isFinite(r) ? Math.round(r * 1e8) / 1e8 : NaN; } catch (e) { return NaN; }
+}
+const plainNum = n => String(n).replace('.', ',');
+const CALC_FIELDS = ['amount', 'price', 'fee', 'tax'];
+const Calc = {
+  bar: null, target: null,
+  build() {
+    const box = document.createElement('div');
+    box.className = 'calcwrap';
+    box.innerHTML = '<div class="calcbar" role="group" aria-label="Калькулятор">' +
+      ['+', '−', '×', '÷', '(', ')', '=', '⌫'].map(o => `<button type="button" data-op="${o}" ${o === '=' ? 'class="eq"' : ''} aria-label="${{ '⌫': 'Стереть', '=': 'Вычислить', '−': 'Минус', '×': 'Умножить', '÷': 'Разделить' }[o] || o}">${o}</button>`).join('') +
+      '</div><div class="calc-res num" aria-live="polite"></div>';
+    box.addEventListener('pointerdown', e => { if (e.target.closest('button')) e.preventDefault(); });
+    box.addEventListener('click', e => { const b = e.target.closest('[data-op]'); if (b) this.op(b.dataset.op); });
+    return box;
+  },
+  attach(input) {
+    if (!this.bar) this.bar = this.build();
+    this.target = input;
+    const host = input.closest('.grid2') || input.closest('.field');
+    host.after(this.bar);
+    this.bar.hidden = false;
+    this.preview();
+  },
+  detach() { if (this.bar) this.bar.hidden = true; this.target = null; },
+  set(v, caret) {
+    const el = this.target;
+    el.value = v;
+    try { el.setSelectionRange(caret, caret); } catch (e) { /* поле без курсора */ }
+    el.dispatchEvent(new Event('input', { bubbles: true }));
+    this.preview();
+  },
+  op(o) {
+    const el = this.target; if (!el) return;
+    const v = el.value, a = el.selectionStart != null ? el.selectionStart : v.length, b = el.selectionEnd != null ? el.selectionEnd : v.length;
+    if (o === '=') { this.resolve(true); return; }
+    if (o === '⌫') { if (a !== b) this.set(v.slice(0, a) + v.slice(b), a); else if (a > 0) this.set(v.slice(0, a - 1) + v.slice(a), a - 1); return; }
+    this.set(v.slice(0, a) + o + v.slice(b), a + 1);
+  },
+  preview() {
+    const res = this.bar && this.bar.querySelector('.calc-res'), el = this.target;
+    if (!res || !el) return;
+    if (!hasOps(el.value)) { res.textContent = ''; res.classList.remove('err'); return; }
+    const n = evalExpr(el.value);
+    res.classList.toggle('err', !isFinite(n));
+    res.textContent = isFinite(n) ? '= ' + new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 8 }).format(n) : 'Выражение не закончено';
+  },
+  // заменить выражение результатом; false — выражение с ошибкой
+  resolve(loud, input) {
+    const el = input || this.target;
+    if (!el || !hasOps(el.value)) return true;
+    const n = evalExpr(el.value);
+    if (!isFinite(n)) { if (loud) toast('Проверьте выражение'); return false; }
+    el.value = plainNum(n);
+    el.dispatchEvent(new Event('input', { bubbles: true }));
+    if (el === this.target) this.preview();
+    return true;
+  }
+};
+document.addEventListener('focusin', e => {
+  const t = e.target;
+  if (t.form && t.form.id === 'tx-form' && CALC_FIELDS.includes(t.name)) Calc.attach(t);
+  else if (Calc.target && !(Calc.bar && Calc.bar.contains(t))) Calc.detach();
+});
+document.addEventListener('focusout', e => {
+  const t = e.target;
+  if (t.form && t.form.id === 'tx-form' && CALC_FIELDS.includes(t.name)) {
+    Calc.resolve(false, t);
+    setTimeout(() => { const a = document.activeElement; if (!(a && a.form && a.form.id === 'tx-form' && CALC_FIELDS.includes(a.name))) Calc.detach(); }, 0);
+  }
+});
+document.addEventListener('input', e => { if (e.target === Calc.target) Calc.preview(); });
+
+/* ================= системная кнопка «Назад» и вкладки ================= */
+// Как в «Расходах»: «Назад» закрывает шторку, снимает выбор, возвращает на прошлую вкладку,
+// а на «Обзоре» после второго нажатия предлагает закрыть приложение.
+// Chrome на Android пропускает записи истории без касания экрана, поэтому «запас» пополняется после касаний.
+const Nav = { stack: [], backAt: 0, exiting: false, idx: 0 };
+function go(tab, fromBack) {
+  if (Sel.on) Sel.exit();
+  if (!fromBack && tab !== UI.tab) {
+    if (tab === 'overview') Nav.stack.length = 0;
+    else { Nav.stack.push(UI.tab); if (Nav.stack.length > 30) Nav.stack.shift(); }
+  }
+  UI.tab = tab;
+  try { sessionStorage.setItem('portfolio:tab', tab); } catch (e) { /* без sessionStorage */ }
+  render(); window.scrollTo(0, 0);
+}
+const histIdx = () => { const st = history.state; return st && typeof st.pf === 'number' ? st.pf : 0; };
+try { if (!history.state || typeof history.state.pf !== 'number') history.replaceState({ pf: 0 }, ''); } catch (e) { /* история недоступна */ }
+Nav.idx = histIdx();
+function armBack() {
+  if (Nav.exiting) return;
+  const need = Math.min(Nav.stack.length + 3, 20);
+  try { while (Nav.idx < need) { Nav.idx++; history.pushState({ pf: Nav.idx }, ''); } } catch (e) { /* история недоступна */ }
+}
+armBack();
+['pointerdown', 'pointerup', 'click', 'keydown', 'touchend'].forEach(t => document.addEventListener(t, () => { armBack(); setTimeout(armBack, 0); }, true));
+window.addEventListener('popstate', () => {
+  Nav.idx = histIdx();
+  if (Nav.exiting) { history.back(); return; }
+  if (document.getElementById('sheet').classList.contains('on')) { closeSheet(true); return; }
+  if (Lock.on) { askExit(); return; }
+  if (Sel.on) { Sel.exit(); return; }
+  const open = document.querySelector('.sw.open');
+  if (open) { closeSwipe(open); return; }
+  if (Nav.stack.length) { go(Nav.stack.pop(), true); return; }
+  if (UI.tab !== 'overview') { go('overview', true); return; }
+  const now = Date.now();
+  if (now - Nav.backAt < 2500) { Nav.backAt = 0; askExit(); return; }
+  Nav.backAt = now;
+  toast('Нажмите «Назад» ещё раз, чтобы закрыть приложение');
+});
+async function askExit() {
+  if (!(await ask('Закрыть приложение?', 'Закрыть', false, '', Lock.on))) return;
+  if (NATIVE) { try { await nativePlugin('App').exitApp(); return; } catch (e) { /* закрыть через историю */ } }
+  Nav.exiting = true; Nav.idx = histIdx();
+  if (Nav.idx > 0) history.go(-Nav.idx); else history.back();
+}
+
+/* ================= версия и обновление ================= */
+
+async function appUpdate() {
+  if (NATIVE) {
+    // новая версия APK ставится поверх, данные сохраняются
+    const a = document.createElement('a'); a.href = RELEASE_URL; a.target = '_blank'; a.rel = 'noopener';
+    document.body.appendChild(a); a.click(); a.remove();
+    toast('Скачайте новую версию и установите поверх — данные сохранятся');
+    return;
+  }
+  if (!navigator.onLine) { toast('Для обновления нужен интернет'); return; }
+  toast('Проверяю обновление…');
+  try {
+    const r = navigator.serviceWorker && await navigator.serviceWorker.getRegistration();
+    if (r) await r.update();
+    if (window.caches) { const ks = await caches.keys(); await Promise.all(ks.map(k => caches.delete(k))); }
+  } catch (e) { /* обновится при следующем запуске */ }
+  setTimeout(() => location.reload(), 400);
 }
 
 /* ================= оболочка ================= */
@@ -1923,7 +2317,9 @@ function render() {
     : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>';
   applyTheme();
   document.getElementById('refresh').hidden = S.demo || !S.txs.length;
+  if (UI.tab !== 'ops' && Sel.on) Sel.exit();
   RENDER[UI.tab]();
+  if (UI.tab === 'ops' && Sel.on) Sel.refresh();
 }
 function applyTheme() {
   const t = S.settings.theme;
@@ -1934,14 +2330,11 @@ function commit() { invalidate(); render(); Store.save(S); }
 let lastFocus = null;
 function setInert() {
   const sheetOn = document.getElementById('sheet').classList.contains('on');
+  const askTop = document.body.classList.contains('ask-top');
   ['header.top', 'main', 'nav.tabs', '#fab'].forEach(sel => { document.querySelector(sel).inert = sheetOn || Lock.on; });
-  document.getElementById('sheet').inert = !sheetOn || Lock.on;
+  document.getElementById('sheet').inert = !sheetOn || (Lock.on && !askTop);
+  document.getElementById('lock').inert = askTop;
 }
-let sheetInHistory = false;
-window.addEventListener('popstate', () => {
-  if (document.getElementById('sheet').classList.contains('on')) closeSheet(true);
-  else sheetInHistory = false;
-});
 function openSheet(html) {
   const sh = document.getElementById('sheet');
   if (!sh.classList.contains('on')) lastFocus = document.activeElement;
@@ -1952,17 +2345,35 @@ function openSheet(html) {
   else { sh.removeAttribute('aria-labelledby'); sh.setAttribute('aria-label', 'Окно'); }
   sh.classList.add('on'); document.getElementById('sheet-bg').classList.add('on');
   setInert();
-  // запись в истории: системная кнопка «Назад» закрывает шторку, а не приложение
-  if (!sheetInHistory) { history.pushState({ sheet: true }, ''); sheetInHistory = true; }
   const first = sh.querySelector('input:not([type=hidden]),select,button:not([data-act=close])');
   setTimeout(() => (first || sh).focus && (first || sh).focus({ preventScroll: true }), 50);
 }
 function closeSheet(fromBack) {
   if (!document.getElementById('sheet').classList.contains('on')) return;
+  document.body.classList.remove('ask-top');
+  if (askResolve) { const r = askResolve; askResolve = null; setTimeout(() => r(false)); }
   document.getElementById('sheet').classList.remove('on'); document.getElementById('sheet-bg').classList.remove('on');
   setInert();
-  if (sheetInHistory) { sheetInHistory = false; if (fromBack !== true) history.back(); }
   if (lastFocus && lastFocus.focus) lastFocus.focus({ preventScroll: true });
+}
+
+// подтверждение в шторке (как в «Расходах») вместо системного окна; true — согласие
+let askResolve = null;
+function ask(text, okLabel, danger, details, overLock) {
+  return new Promise(res => {
+    if (askResolve) { const r = askResolve; askResolve = null; r(false); }
+    askResolve = res;
+    document.body.classList.toggle('ask-top', !!overLock);
+    openSheet(`<div class="sh"><h2 id="sheet-title" style="font:600 17px/1.3 var(--body)">${esc(text)}</h2></div>
+      ${details ? `<p class="hint" style="margin:0 0 14px">${esc(details)}</p>` : ''}
+      <div class="btn-row"><button class="btn" data-ask="0">Отмена</button><button class="btn ${danger ? 'danger' : 'primary'}" data-ask="1">${esc(okLabel || 'Да')}</button></div>`);
+    if (overLock) { document.getElementById('sheet').inert = false; }
+  });
+}
+function answerAsk(v) {
+  const r = askResolve; askResolve = null;
+  closeSheet();
+  if (r) r(v);
 }
 
 let toastTimer = null;
@@ -1979,12 +2390,23 @@ function toast(msg, actionLabel, action) {
 
 document.addEventListener('click', e => {
   if (!S) return;
+  const askBtn = e.target.closest('[data-ask]');
+  if (askBtn) { answerAsk(askBtn.dataset.ask === '1'); return; }
   const tab = e.target.closest('nav.tabs [data-tab]');
-  if (tab) { UI.tab = tab.dataset.tab; render(); window.scrollTo(0, 0); return; }
+  if (tab) { go(tab.dataset.tab); return; }
+  const seg = e.target.closest('#donut path[data-k]');
+  if (seg) { UI.allocSel = UI.allocSel === seg.dataset.k ? null : seg.dataset.k; renderOverview(); return; }
+  // выбор нескольких операций: короткое нажатие отмечает, долгое — начинает выбор
+  const swc = e.target.closest('#s-ops .sw-c[data-tx]');
+  if (swc && (Sel.lpFired || Sel.on)) {
+    e.preventDefault();
+    if (Sel.lpFired) { Sel.lpFired = false; return; }
+    Sel.toggle(swc.dataset.tx); return;
+  }
   const per = e.target.closest('[data-period]');
   if (per) { UI.period = per.dataset.period; render(); return; }
   const al = e.target.closest('[data-alloc]');
-  if (al) { UI.alloc = al.dataset.alloc; render(); return; }
+  if (al) { UI.alloc = al.dataset.alloc; UI.allocSel = null; render(); return; }
   const pc = e.target.closest('[data-posclass]');
   if (pc) { UI.posClass = pc.dataset.posclass; render(); return; }
   const ot = e.target.closest('[data-opstype]');
@@ -2000,16 +2422,25 @@ document.addEventListener('click', e => {
   if (!act) return;
   switch (act.dataset.act) {
     case 'close': closeSheet(); break;
+    case 'sel-cancel': Sel.exit(); break;
+    case 'sel-del': Sel.del(); break;
+    case 'app-update': appUpdate(); break;
     case 'add': openTxForm(null, act.dataset.preset ? { type: act.dataset.preset } : null); break;
     case 'demo':
-      if (S.txs.length && !S.demo && !confirm('Заменить ваши данные демо-данными?')) return;
-      { const theme = S.settings.theme; S = makeDemo(); S.settings.theme = theme; } commit(); toast('Загружены демо-данные'); break;
+      (async () => {
+        if (S.txs.length && !S.demo && !(await ask('Заменить ваши данные демо-данными?', 'Заменить', true))) return;
+        { const theme = S.settings.theme; S = makeDemo(); S.settings.theme = theme; } commit(); toast('Загружены демо-данные');
+      })(); break;
     case 'clear-demo':
-      if (!confirm('Удалить демо-данные и начать с пустого портфеля?')) return;
-      { const theme = S.settings.theme; S = initialState(); S.settings.theme = theme; } commit(); break;
+      (async () => {
+        if (!(await ask('Удалить демо-данные и начать с пустого портфеля?', 'Удалить', true))) return;
+        { const theme = S.settings.theme; S = initialState(); S.settings.theme = theme; } commit();
+      })(); break;
     case 'wipe':
-      if (!confirm('Удалить все счета, операции и цены? Это нельзя отменить.')) return;
-      S = initialState(); commit(); toast('Данные удалены'); break;
+      (async () => {
+        if (!(await ask('Удалить все счета, операции и цены?', 'Удалить', true, 'Это нельзя отменить. Перед удалением можно сохранить резервную копию.'))) return;
+        { const theme = S.settings.theme; S = initialState(); S.settings.theme = theme; } commit(); toast('Данные удалены');
+      })(); break;
     case 'del-tx': deleteTx(act.dataset.id); break;
     case 'edit-tx': openTxForm(S.txs.find(x => x.id === act.dataset.id)); break;
     case 'set-price': setPriceSheet(act.dataset.asset); break;
@@ -2017,9 +2448,9 @@ document.addEventListener('click', e => {
     case 'add-acc': addAccountSheet(); break;
     case 'export-json': exportJson(); break;
     case 'export-csv': download('portfolio-operations-' + C.today() + '.csv', C.txsToCSV(S), 'text/csv;charset=utf-8'); break;
-    case 'import-json': document.getElementById('file-json').click(); break;
-    case 'import-csv': document.getElementById('file-csv').click(); break;
-    case 'import-xlsx': document.getElementById('file-xlsx').click(); break;
+    case 'import-json': expectSystemUI(); document.getElementById('file-json').click(); break;
+    case 'import-csv': expectSystemUI(); document.getElementById('file-csv').click(); break;
+    case 'import-xlsx': expectSystemUI(); document.getElementById('file-xlsx').click(); break;
     case 'xlsx-go': xlsxCommit(); break;
     case 'restore': restoreBackup(act.dataset.mode); break;
     case 'csv-go': csvCommit(); break;
@@ -2027,6 +2458,8 @@ document.addEventListener('click', e => {
     case 'check-sources': Quotes.check(); break;
     case 'edit-asset': editAssetSheet(act.dataset.asset); break;
     case 'pin-on': case 'pin-change': case 'pin-off': pinSheet(act.dataset.act.slice(4)); break;
+    case 'bio-toggle': toggleBio(); break;
+    case 'lock-now': if (Lock.has()) { Lock.bioTried = true; Lock.show(); } break;
     case 'goto-quotes': UI.tab = 'more'; render(); setTimeout(() => { const c = document.getElementById('quotes-card'); if (c) c.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 50); break;
     case 'archive-acc': { const a = S.accounts.find(x => x.id === act.dataset.id); a.archived = !a.archived; commit(); break; }
   }
@@ -2042,7 +2475,7 @@ document.addEventListener('change', e => {
   else if (t.id === 'set-base') { S.settings.baseCurrency = t.value; UI.contrib = null; commit(); }
   else if (t.id === 'set-theme') { S.settings.theme = t.value; commit(); }
   else if (t.id === 'set-method') { S.settings.method = t.value; commit(); }
-  else if (t.id === 'set-lock') { S.settings.pin.lockAfter = +t.value; commit(); }
+  else if (t.id === 'set-lock') { S.settings.pin.lockAfterSec = +t.value; delete S.settings.pin.lockAfter; commit(); toast('Автоблокировка: ' + t.selectedOptions[0].textContent.toLowerCase()); }
   else if (t.id === 'set-auto') { S.settings.autoQuotes = t.checked; commit(); if (t.checked) Quotes.update(); }
   else if (t.id === 'set-interval') { S.settings.quoteRefreshMinutes = +t.value; commit(); }
   else if (t.id === 'set-proxy') { S.settings.proxyUrl = t.value.trim(); Quotes.checks = ''; commit(); Quotes.update({ force: true }); }
@@ -2061,10 +2494,38 @@ document.addEventListener('input', e => {
 });
 document.getElementById('sheet-bg').addEventListener('click', closeSheet);
 document.getElementById('fab').addEventListener('click', () => openTxForm());
-document.getElementById('eye').addEventListener('click', () => { S.settings.hideAmounts = !S.settings.hideAmounts; render(); Store.save(S); });
+function setHidden(v) { S.settings.hideAmounts = v; render(); Store.save(S); toast(v ? 'Суммы скрыты' : 'Суммы показаны'); }
+async function revealAmounts() {
+  if (!Lock.has()) { setHidden(false); return; }
+  if (Bio.enabled()) { try { await Bio.verify('Показать суммы'); setHidden(false); return; } catch (e) { /* дальше — PIN-код */ } }
+  openSheet(`<div class="sh"><h2 id="sheet-title">Показать суммы</h2><button class="iconbtn" data-act="close" aria-label="Закрыть">✕</button></div>
+    <label class="field"><span>Введите PIN-код</span><input class="input num" type="password" id="rv-pin" inputmode="numeric" maxlength="6" autocomplete="off"></label>
+    <p class="err" id="rv-err" role="alert"></p><button class="btn primary block" id="rv-ok">Показать</button>`);
+  const inp = document.getElementById('rv-pin');
+  const check = async () => {
+    if (await C.checkPin(inp.value, S.settings.pin)) { closeSheet(); setHidden(false); }
+    else { inp.value = ''; document.getElementById('rv-err').textContent = 'Неверный PIN-код'; }
+  };
+  document.getElementById('rv-ok').onclick = check;
+  inp.addEventListener('input', () => { if (inp.value.length === (S.settings.pin.len || 4)) check(); });
+}
+document.getElementById('eye').addEventListener('click', () => { if (S.settings.hideAmounts) revealAmounts(); else setHidden(true); });
 if (window.matchMedia) matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => render());
 
-if (!NATIVE && 'serviceWorker' in navigator && location.protocol !== 'file:') navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).catch(() => {});
+if (!NATIVE && 'serviceWorker' in navigator && location.protocol !== 'file:') {
+  let hadCtrl = !!navigator.serviceWorker.controller, reloaded = false;
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (!hadCtrl) { hadCtrl = true; return; }
+    if (reloaded) return;
+    reloaded = true;
+    const busy = document.getElementById('sheet').classList.contains('on') || Sel.on || Lock.on;
+    if (busy) toast('Загружена новая версия, она откроется при следующем запуске'); else location.reload();
+  });
+  navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).then(r => {
+    r.update().catch(() => {});
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) r.update().catch(() => {}); });
+  }).catch(() => {});
+}
 
 (async () => {
   await Store.init();
@@ -2075,6 +2536,7 @@ if (!NATIVE && 'serviceWorker' in navigator && location.protocol !== 'file:') na
     S = initialState();
     toast('Не удалось прочитать сохранённые данные');
   }
+  try { const t = sessionStorage.getItem('portfolio:tab'); if (t && RENDER[t]) UI.tab = t; } catch (e) { /* без sessionStorage */ }
   const boot = () => { render(); Quotes.start(); };
   if (Lock.has()) { applyTheme(); Lock.show(boot); } else boot();
 })();
