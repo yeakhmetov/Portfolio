@@ -2,7 +2,7 @@
 // Свежая версия файлов загружается в фоне и откроется при следующем запуске;
 // при смене VERSION новый Service Worker сразу перезапускает приложение.
 // Запросы к другим сайтам (котировки) не перехватываются, кроме шрифтов.
-const VERSION = 'portfolio-v6';
+const VERSION = 'portfolio-v7';
 const CORE = ['./', './index.html', './core.js', './quotes.js', './xlsx.js', './template.js', './manifest.webmanifest', './icon-192.png', './icon-512.png',
   './icon-192-maskable.png', './icon-512-maskable.png', './apple-touch-icon.png'];
 

@@ -117,6 +117,12 @@ header.top .acts{display:flex;gap:2px}
 .item .s{font-size:12.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .item .r{text-align:right;flex:none}
 .item .r .t{font-weight:600;font-size:15px}
+.seg-head{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap}
+.seg-head h2{margin:2px 0 0}
+.seg-sum{text-align:right;margin-left:auto}
+.seg-sum .v{font-weight:700;font-size:17px}
+.seg-sum .s{font-size:12.5px}
+.pos-total .hero{margin:2px 0 4px}
 .group-h{font-size:13px;color:var(--muted);font-weight:600;margin:14px 2px 6px}
 .empty{text-align:center;color:var(--muted);padding:28px 12px}
 .empty .btn{margin-top:12px}
@@ -890,6 +896,14 @@ function renderPositions() {
   const sorters = { value: (a, b) => b.valueBase - a.valueBase, pnl: (a, b) => (b.pnlPct || 0) - (a.pnlPct || 0), name: (a, b) => a.asset.ticker.localeCompare(b.asset.ticker) };
   rows.sort(sorters[UI.posSort]);
   const total = rows.reduce((s, r) => s + r.valueBase, 0);
+  // сегменты по валюте позиции: базовая валюта первой, остальные — по убыванию стоимости
+  const segMap = {};
+  rows.forEach(r => {
+    const g = segMap[r.currency] || (segMap[r.currency] = { cur: r.currency, rows: [], value: 0, cost: 0, valueBase: 0 });
+    g.rows.push(r); g.value += r.value; g.cost += r.cost; g.valueBase += r.valueBase;
+  });
+  const segs = Object.values(segMap).map(g => Object.assign(g, { pnl: g.value - g.cost }))
+    .sort((a, b) => (b.cur === base) - (a.cur === base) || b.valueBase - a.valueBase);
   const groupsPresent = GROUPS.filter(g => d.sum.rows.some(r => groupOf(r.asset.class) === g.key));
   el.innerHTML = `
     <div class="chips" style="margin-bottom:8px">
@@ -904,18 +918,34 @@ function renderPositions() {
         <option value="name" ${UI.posSort === 'name' ? 'selected' : ''}>По тикеру</option>
       </select>
     </div>
-    <div class="card">
-      <div class="row"><span class="label">${rows.length} ${plural(rows.length, 'позиция', 'позиции', 'позиций')}</span><span class="num" style="font-weight:600">${money(total, base, { digits: 0 })}</span></div>
-      ${rows.length ? `<ul class="list" style="margin-top:6px">${rows.map(r => `
+    ${rows.length ? `<div class="card pos-total">
+      <div class="label">Все позиции · ${rows.length} ${plural(rows.length, 'позиция', 'позиции', 'позиций')}</div>
+      <div class="hero num">${money(total, base, { digits: 0 })}</div>
+      ${segs.length > 1 ? `<div class="label">${segs.map(g => `${esc(segName(g.cur))}: ${money(g.valueBase, base, { digits: 0 })}`).join(' · ')}</div>` : ''}
+    </div>` : ''}
+    ${segs.map(g => `<section class="card" aria-label="${esc(segName(g.cur))}">
+      <div class="seg-head">
+        <h2>${esc(segName(g.cur))}</h2>
+        <div class="seg-sum">
+          <div class="num v">${money(g.value, g.cur, g.cur === base ? { digits: 0 } : {})}</div>
+          ${g.cur !== base ? `<div class="num label">≈ ${money(g.valueBase, base, { digits: 0 })}</div>` : ''}
+          <div class="num s ${cls(g.pnl)}">${arrow(g.pnl)}${money(Math.abs(g.pnl), g.cur, g.cur === base ? { digits: 0 } : {})} · ${pct(Math.abs(g.cost ? g.pnl / g.cost : 0))}</div>
+        </div>
+      </div>
+      <ul class="list" style="margin-top:6px">${g.rows.map(r => `
         <li class="item tap" data-asset="${esc(r.assetId)}" data-account="${esc(r.accountId)}">
           <div class="badge" aria-hidden="true">${tickerBadge(r.asset)}</div>
           <div class="main kb" tabindex="0" role="button"><div class="t">${esc(r.asset.name)}</div><div class="s num">${C.formatQty(r.qty)} шт · ${esc((d.accounts[r.accountId] || {}).name || '')}${r.hasPrice ? (r.price.source !== 'demo' && QT.isStale(r.asset, r.price, Date.now()) ? ' · <span class="stale">цена устарела</span>' : '') : ' · нет цены'}</div></div>
-          <div class="r"><div class="t num">${money(r.valueBase, base, { digits: 0 })}</div><div class="s num ${cls(r.pnl)}">${arrow(r.pnl)}${pct(Math.abs(r.pnlPct || 0))}</div></div>
-        </li>`).join('')}</ul>` : '<div class="empty">Нет позиций по выбранным фильтрам</div>'}
-    </div>
+          <div class="r"><div class="t num">${money(r.value, r.currency, r.currency === base ? { digits: 0 } : {})}</div><div class="s num ${cls(r.pnl)}">${arrow(r.pnl)}${pct(Math.abs(r.pnlPct || 0))}</div></div>
+        </li>`).join('')}</ul>
+    </section>`).join('')}
+    ${rows.length ? '' : '<div class="card"><div class="empty">Нет позиций по выбранным фильтрам</div></div>'}
     ${d.cashRows.length && UI.posClass === 'all' ? `<div class="card"><h2>Деньги на счетах</h2><ul class="list">${d.cashRows.filter(c => UI.posAccount === 'all' || c.accountId === UI.posAccount).map(c => `
       <li class="item"><div class="badge">${esc(c.currency)}</div><div class="main"><div class="t">${esc((d.accounts[c.accountId] || {}).name || '')}</div></div><div class="r"><div class="t num ${c.minor < 0 ? 'down' : ''}">${money(c.minor, c.currency)}</div></div></li>`).join('')}</ul></div>` : ''}`;
 }
+
+const SEG_NAMES = { KZT: 'Тенговые позиции', USD: 'Долларовые позиции', EUR: 'Позиции в евро', RUB: 'Рублёвые позиции', CNY: 'Позиции в юанях', GBP: 'Позиции в фунтах' };
+function segName(cur) { return SEG_NAMES[cur] || 'Позиции в ' + cur; }
 
 function plural(n, one, few, many) {
   const m10 = n % 10, m100 = n % 100;
