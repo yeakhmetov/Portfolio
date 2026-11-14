@@ -820,6 +820,41 @@
     return { data: out, added: added, skipped: skipped };
   }
 
+  /*
+   * Файл настроек бумаг: { app: 'portfolio', kind: 'asset-settings', assets: [{ ticker, exchange?, quoteSymbol?, quoteSource?, name? }] }.
+   * Меняет только биржу, тикер для котировок, способ обновления цены и название у бумаг,
+   * найденных по тикеру; операции, цены и остальные данные не трогает.
+   * Возвращает { assets: новый массив, changes: [{ ticker, fields: {поле: [было, стало]} }], missing: [тикеры] }.
+   */
+  var EXCHANGE_CODES = ['KASE', 'AIX', 'MOEX', 'NYSE', 'NASDAQ', 'LSE', 'CRYPTO', 'OTC'];
+  function applyAssetSettings(assets, file) {
+    if (!file || file.kind !== 'asset-settings' || !Array.isArray(file.assets)) throw new Error('Это не файл настроек бумаг');
+    var byTicker = {};
+    var out = (assets || []).map(function (a) { var c = Object.assign({}, a); byTicker[String(c.ticker).toUpperCase()] = c; return c; });
+    var changes = [], missing = [];
+    file.assets.forEach(function (s) {
+      if (!s || !s.ticker) return;
+      var a = byTicker[String(s.ticker).toUpperCase()];
+      if (!a) { missing.push(String(s.ticker)); return; }
+      var fields = {};
+      function set(k, v) { if ((a[k] || '') !== (v || '')) { fields[k] = [a[k] || '', v || '']; if (v) a[k] = v; else delete a[k]; } }
+      if (s.exchange != null) {
+        var ex = String(s.exchange).toUpperCase();
+        if (EXCHANGE_CODES.indexOf(ex) < 0) throw new Error('Неизвестная биржа: ' + s.exchange);
+        set('exchange', ex);
+      }
+      if (s.quoteSymbol != null) {
+        var q = String(s.quoteSymbol).trim();
+        if (q && !/^[A-Za-z0-9_.\-]{1,24}$/.test(q)) throw new Error('Неверный тикер для котировок: ' + q);
+        set('quoteSymbol', q);
+      }
+      if (s.quoteSource != null) set('quoteSource', s.quoteSource === 'manual' ? 'manual' : '');
+      if (s.name != null && String(s.name).trim()) set('name', String(s.name).trim().slice(0, 120));
+      if (Object.keys(fields).length) changes.push({ ticker: a.ticker, fields: fields });
+    });
+    return { assets: out, changes: changes, missing: missing };
+  }
+
   /* ---------- аналитика по периодам ---------- */
 
   function addDaysIso(d, n) { return new Date(toTime(d) + n * DAY).toISOString().slice(0, 10); }
@@ -990,7 +1025,7 @@
     txsToCSV: txsToCSV,
     makeBackup: makeBackup,
     validateBackup: validateBackup,
-    mergeData: mergeData,
+    mergeData: mergeData, applyAssetSettings: applyAssetSettings,
     periodRange: periodRange,
     previousRange: previousRange,
     periodBuckets: periodBuckets,

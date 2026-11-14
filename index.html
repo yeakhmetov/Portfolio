@@ -1638,6 +1638,7 @@ document.getElementById('file-json').addEventListener('change', async e => {
   if (!f) return;
   let obj = null;
   try { obj = JSON.parse(await f.text()); } catch (err) { toast('Файл повреждён или это не JSON'); return; }
+  if (obj && obj.kind === 'asset-settings') { assetSettingsSheet(obj); return; }
   const v = C.validateBackup(obj);
   if (!v.ok) { toast(v.error); return; }
   pendingBackup = obj;
@@ -1652,6 +1653,33 @@ document.getElementById('file-json').addEventListener('change', async e => {
     <p class="hint" style="margin:0 0 12px"><b>Заменить</b> — текущие данные удаляются и заменяются копией. <b>Объединить</b> — из копии добавляются только операции, которых здесь ещё нет.</p>
     <div class="btn-row"><button class="btn" data-act="restore" data-mode="merge">Объединить</button><button class="btn primary" data-act="restore" data-mode="replace">Заменить</button></div>`);
 });
+
+// файл настроек бумаг: меняет биржу, тикер для котировок и способ обновления цены, операции не трогает
+let pendingSettings = null;
+const SETTING_LABELS = { exchange: 'Биржа', quoteSymbol: 'Тикер для котировок', quoteSource: 'Цена', name: 'Название' };
+function assetSettingsSheet(file) {
+  let r;
+  try { r = C.applyAssetSettings(S.assets, file); } catch (e) { toast(e.message); return; }
+  if (!r.changes.length) { toast(r.missing.length ? 'В приложении нет бумаг из файла' : 'Настройки бумаг уже такие'); return; }
+  pendingSettings = r;
+  const val = (k, v) => k === 'quoteSource' ? (v === 'manual' ? 'вручную' : 'автоматически') : (v || '—');
+  const nameOf = t => { const a = S.assets.find(x => x.ticker === t); return a ? a.name : t; };
+  openSheet(`<div class="sh"><h2 id="sheet-title">Настройки бумаг</h2><button class="iconbtn" data-act="close" aria-label="Закрыть">✕</button></div>
+    <div class="card"><ul class="list">${r.changes.map(c => `<li class="item" style="align-items:flex-start"><div class="main"><div class="t">${esc(nameOf(c.ticker))}</div>
+      ${Object.keys(c.fields).map(k => `<div class="s" style="white-space:normal">${SETTING_LABELS[k]}: ${esc(val(k, c.fields[k][0]))} → <b>${esc(val(k, c.fields[k][1]))}</b></div>`).join('')}</div></li>`).join('')}</ul>
+      ${r.missing.length ? `<p class="hint" style="margin:8px 0 0">Нет в приложении: ${esc(r.missing.join(', '))}</p>` : ''}</div>
+    <p class="hint" style="margin:0 0 12px">Меняются только эти настройки. Операции, цены и остальные данные остаются как есть.</p>
+    <div class="btn-row"><button class="btn" data-act="close">Отмена</button><button class="btn primary" data-act="apply-settings">Применить</button></div>`);
+}
+function applySettings() {
+  if (!pendingSettings) return;
+  S.assets = pendingSettings.assets;
+  const n = pendingSettings.changes.length;
+  pendingSettings = null;
+  closeSheet(); commit();
+  toast('Обновлены настройки бумаг: ' + n);
+  Quotes.update({ force: true, manual: true });
+}
 
 async function restoreBackup(mode) {
   if (!pendingBackup) return;
@@ -2642,6 +2670,7 @@ document.addEventListener('click', e => {
     case 'import-xlsx': expectSystemUI(); document.getElementById('file-xlsx').click(); break;
     case 'xlsx-go': xlsxCommit(); break;
     case 'restore': restoreBackup(act.dataset.mode); break;
+    case 'apply-settings': applySettings(); break;
     case 'csv-go': csvCommit(); break;
     case 'refresh-quotes': Quotes.update({ force: true, manual: true }); break;
     case 'check-sources': Quotes.check(); break;

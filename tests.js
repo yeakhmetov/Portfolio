@@ -626,6 +626,29 @@
     });
   });
 
+  test('Файл настроек бумаг меняет только биржу, тикер котировок и способ обновления', function () {
+    var assets = [
+      { id: 'a1', ticker: 'KZPF00000124', name: 'Фонд', class: 'fund', currency: 'KZT', exchange: 'OTC', quoteSource: 'manual' },
+      { id: 'a2', ticker: 'KCEL', name: 'Кселл', class: 'stock', currency: 'KZT', exchange: 'KASE' }
+    ];
+    var r = C.applyAssetSettings(assets, { app: 'portfolio', kind: 'asset-settings', assets: [
+      { ticker: 'kzpf00000124', exchange: 'kase', quoteSymbol: 'FHJIhm', quoteSource: 'auto' },
+      { ticker: 'KCEL', exchange: 'KASE' },
+      { ticker: 'NOPE', exchange: 'AIX' }
+    ] });
+    var f = r.assets[0];
+    eq(f.exchange, 'KASE'); eq(f.quoteSymbol, 'FHJIhm'); eq('quoteSource' in f, false, 'автообновление');
+    eq(f.id, 'a1'); eq(f.name, 'Фонд'); eq(f.currency, 'KZT');
+    eq(r.changes.length, 1, 'без изменений у KCEL');
+    eq(r.changes[0].fields.exchange.join('→'), 'OTC→KASE');
+    eq(r.missing.join(), 'NOPE');
+    eq(assets[0].exchange, 'OTC', 'исходный массив не меняется');
+    var bad = function (x) { try { C.applyAssetSettings(assets, x); return null; } catch (e) { return e.message; } };
+    eq(/не файл настроек/.test(bad({ kind: 'backup' })), true);
+    eq(/Неизвестная биржа/.test(bad({ kind: 'asset-settings', assets: [{ ticker: 'KCEL', exchange: 'XXX' }] })), true);
+    eq(/Неверный тикер/.test(bad({ kind: 'asset-settings', assets: [{ ticker: 'KCEL', quoteSymbol: 'a b<c' }] })), true);
+  });
+
   /* ---------- вывод ---------- */
 
   var done = Promise.all(pending).then(function () {
