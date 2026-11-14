@@ -213,6 +213,7 @@
     var positions = {};
     var cash = {};
     var funded = fundedAccounts(txs);
+    var realizedEvents = []; // прибыль по каждой продаже — для аналитики по периодам
     var errors = [];
 
     function pos(accountId, assetId, cur) {
@@ -291,6 +292,7 @@
           }
           var soldCost = takeLots(p, t.quantity).reduce(function (s, l) { return s + l.cost; }, 0);
           p.realized += amount - fee - soldCost;
+          realizedEvents.push({ txId: t.id, date: t.date, accountId: t.accountId, assetId: t.assetId, currency: cur, realized: amount - fee - soldCost });
           p.fees += fee;
           addCash(t.accountId, cur, amount - fee);
           break;
@@ -343,7 +345,7 @@
       }
     });
 
-    return { positions: positions, cash: cash, funded: funded, errors: errors };
+    return { positions: positions, cash: cash, funded: funded, errors: errors, realizedEvents: realizedEvents };
   }
 
   /* ---------- оценка ---------- */
@@ -818,6 +820,115 @@
     return { data: out, added: added, skipped: skipped };
   }
 
+  /* ---------- аналитика по периодам ---------- */
+
+  function addDaysIso(d, n) { return new Date(toTime(d) + n * DAY).toISOString().slice(0, 10); }
+  function ymd(y, m, d) { var t = new Date(Date.UTC(y, m - 1, d)); return t.toISOString().slice(0, 10); }
+  function lastDayOfMonth(y, m) { return new Date(Date.UTC(y, m, 0)).getUTCDate(); }
+
+  // период → [с, по] включительно; today и firstDate — 'YYYY-MM-DD'
+  function periodRange(key, today, firstDate) {
+    var y = +today.slice(0, 4), m = +today.slice(5, 7);
+    switch (key) {
+      case 'month': return [ymd(y, m, 1), today];
+      case 'prev-month': { var py = m === 1 ? y - 1 : y, pm = m === 1 ? 12 : m - 1; return [ymd(py, pm, 1), ymd(py, pm, lastDayOfMonth(py, pm))]; }
+      case 'quarter': return [ymd(y, Math.floor((m - 1) / 3) * 3 + 1, 1), today];
+      case 'year': return [ymd(y, 1, 1), today];
+      case 'prev-year': return [ymd(y - 1, 1, 1), ymd(y - 1, 12, 31)];
+      case '12m': { var d = +today.slice(8, 10), ly = y - 1; return [addDaysIso(ymd(ly, m, Math.min(d, lastDayOfMonth(ly, m))), 1), today]; }
+      default: return [firstDate && firstDate < today ? firstDate : today, today];
+    }
+  }
+  // предыдущий период той же длины — для сравнения
+  function previousRange(from, to) {
+    var len = daysBetween(from, to) + 1;
+    return [addDaysIso(from, -len), addDaysIso(from, -1)];
+  }
+
+  var MON = ['янв', 'фев', 'мар', 'апр', 'май', 'июн', 'июл', 'авг', 'сен', 'окт', 'ноя', 'дек'];
+  // разбивка периода для графика: до 31 дня — по неделям, до 3 лет — по месяцам, дальше — по годам
+  function periodBuckets(from, to) {
+    var span = daysBetween(from, to) + 1, out = [];
+    if (span <= 31) {
+      for (var a = from; a <= to; a = addDaysIso(a, 7)) {
+        var b = addDaysIso(a, 6); if (b > to) b = to;
+        out.push({ from: a, to: b, label: +a.slice(8, 10) + ' ' + MON[+a.slice(5, 7) - 1] });
+      }
+      return { unit: 'week', list: out };
+    }
+    if (span <= 1100) {
+      var y = +from.slice(0, 4), m = +from.slice(5, 7), multiYear = from.slice(0, 4) !== to.slice(0, 4);
+      while (true) {
+        var start = ymd(y, m, 1), end = ymd(y, m, lastDayOfMonth(y, m));
+        if (start > to) break;
+        out.push({ from: start < from ? from : start, to: end > to ? to : end, label: MON[m - 1] + (multiYear ? ' ' + String(y).slice(2) : '') });
+        m++; if (m > 12) { m = 1; y++; }
+      }
+      return { unit: 'month', list: out };
+    }
+    for (var yy = +from.slice(0, 4); yy <= +to.slice(0, 4); yy++) {
+      var s0 = ymd(yy, 1, 1), e0 = ymd(yy, 12, 31);
+      out.push({ from: s0 < from ? from : s0, to: e0 > to ? to : e0, label: String(yy) });
+    }
+    return { unit: 'year', list: out };
+  }
+
+  /*
+   * Итоги операций за период в базовой валюте (по курсу на дату операции).
+   * opts: { from, to, fx, base, accountId?, realizedEvents? }
+   */
+  function periodFlows(txs, opts) {
+    var fx = opts.fx, base = opts.base;
+    var r = { dividends: 0, coupons: 0, payoutTax: 0, deposits: 0, withdrawals: 0, buys: 0, sells: 0, fees: 0, taxes: 0,
+      realized: 0, trades: 0, payouts: 0, byAsset: {} };
+    function conv(minor, cur, d) { var v = fx.convert(minor, cur, base, d); return v == null ? 0 : v; }
+    function inAcc(t) { return !opts.accountId || t.accountId === opts.accountId || t.toAccountId === opts.accountId; }
+    txs.forEach(function (t) {
+      if (t.date < opts.from || t.date > opts.to || !inAcc(t)) return;
+      var a = conv(t.amount || 0, t.currency, t.date), fee = conv(t.fee || 0, t.currency, t.date), tax = conv(t.tax || 0, t.currency, t.date);
+      switch (t.type) {
+        case 'dividend': case 'coupon': {
+          var net = a - tax;
+          if (t.type === 'dividend') r.dividends += net; else r.coupons += net;
+          r.payoutTax += tax; r.taxes += tax; r.payouts++;
+          var e = r.byAsset[t.assetId] = r.byAsset[t.assetId] || { dividends: 0, coupons: 0, count: 0 };
+          if (t.type === 'dividend') e.dividends += net; else e.coupons += net;
+          e.count++;
+          break;
+        }
+        case 'deposit': r.deposits += a; break;
+        case 'withdraw': r.withdrawals += a; break;
+        case 'buy': r.buys += a; r.fees += fee; r.trades++; break;
+        case 'sell': r.sells += a; r.fees += fee; r.trades++; break;
+        case 'fee': r.fees += a; break;
+        case 'tax': r.taxes += a; break;
+        case 'transfer': r.fees += fee; break;
+      }
+    });
+    (opts.realizedEvents || []).forEach(function (e) {
+      if (e.date < opts.from || e.date > opts.to) return;
+      if (opts.accountId && e.accountId !== opts.accountId) return;
+      r.realized += conv(e.realized, e.currency, e.date);
+    });
+    return r;
+  }
+
+  /*
+   * Доходность за период по методу Дитца: учитывает, когда внутри периода вносились деньги.
+   * v0 — стоимость в конце дня перед началом периода, v1 — в конце периода,
+   * contribs — [{date, amount}] (плюс — вложение, минус — вывод), даты внутри [from, to].
+   */
+  function modifiedDietz(v0, v1, contribs, from, to) {
+    var T = daysBetween(addDaysIso(from, -1), to);
+    var c = 0, weighted = 0;
+    contribs.forEach(function (f) {
+      c += f.amount;
+      weighted += f.amount * (T ? (T - daysBetween(addDaysIso(from, -1), f.date)) / T : 0);
+    });
+    var gain = v1 - v0 - c, denom = v0 + weighted;
+    return { gain: gain, contributed: c, ret: denom > 0 ? gain / denom : null };
+  }
+
   /* ---------- PIN-код ---------- */
   // PIN защищает от случайного просмотра; хранится только хэш SHA-256 от «соль:PIN»
 
@@ -880,6 +991,12 @@
     makeBackup: makeBackup,
     validateBackup: validateBackup,
     mergeData: mergeData,
+    periodRange: periodRange,
+    previousRange: previousRange,
+    periodBuckets: periodBuckets,
+    periodFlows: periodFlows,
+    modifiedDietz: modifiedDietz,
+    addDaysIso: addDaysIso,
     pinSupported: pinSupported,
     validPin: validPin,
     hashPin: hashPin,

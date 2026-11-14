@@ -478,6 +478,60 @@
     });
   });
 
+  /* ---------- аналитика по периодам ---------- */
+
+  test('Периоды: границы месяцев, кварталов, лет и 12 месяцев', function () {
+    var T = '2026-11-14', r = function (k, t, f) { return C.periodRange(k, t || T, f).join(' – '); };
+    eq(r('month'), '2026-11-01 – 2026-11-14');
+    eq(r('prev-month'), '2026-10-01 – 2026-10-31');
+    eq(r('prev-month', '2026-01-10'), '2025-12-01 – 2025-12-31', 'январь → декабрь прошлого года');
+    eq(r('quarter'), '2026-10-01 – 2026-11-14');
+    eq(r('year'), '2026-01-01 – 2026-11-14');
+    eq(r('prev-year'), '2025-01-01 – 2025-12-31');
+    eq(r('12m'), '2025-11-15 – 2026-11-14');
+    eq(r('12m', '2024-02-29'), '2023-03-01 – 2024-02-29', '29 февраля');
+    eq(r('all', T, '2021-10-05'), '2021-10-05 – 2026-11-14');
+    eq(C.previousRange('2026-11-01', '2026-11-14').join(' – '), '2026-10-18 – 2026-10-31', 'прошлый период той же длины');
+  });
+
+  test('Периоды: разбивка для графика по неделям, месяцам и годам', function () {
+    var w = C.periodBuckets('2026-11-01', '2026-11-14');
+    eq(w.unit, 'week'); eq(w.list.length, 2); eq(w.list[1].from + ' ' + w.list[1].to, '2026-11-08 2026-11-14');
+    var m = C.periodBuckets('2026-01-01', '2026-11-14');
+    eq(m.unit, 'month'); eq(m.list.length, 11); eq(m.list[0].label, 'янв'); eq(m.list[10].to, '2026-11-14', 'последний месяц обрезан по концу периода');
+    var mm = C.periodBuckets('2025-11-15', '2026-11-14');
+    eq(mm.list[0].from, '2025-11-15', 'первый месяц начинается с начала периода'); eq(mm.list[0].label, 'ноя 25');
+    var y = C.periodBuckets('2021-10-05', '2026-11-14');
+    eq(y.unit, 'year'); eq(y.list.map(function (b) { return b.label; }).join(), '2021,2022,2023,2024,2025,2026');
+  });
+
+  test('Итоги за период: выплаты, деньги, сделки, комиссии, зафиксированная прибыль', function () {
+    var txs = scenario();
+    var st = C.computePortfolio(txs, { method: 'fifo' });
+    eq(st.realizedEvents.length, 1); eq(st.realizedEvents[0].realized, M('6200'));
+    var y = C.periodFlows(txs, { from: '2024-01-01', to: '2024-12-31', fx: fx, base: 'KZT', realizedEvents: st.realizedEvents });
+    eq(y.dividends, M('475'), 'дивиденд после налога'); eq(y.payoutTax, M('25')); eq(y.coupons, 0);
+    eq(y.deposits, M('50000')); eq(y.buys, M('42000')); eq(y.sells, M('37500'));
+    eq(y.fees, M('350'), 'комиссии сделок'); eq(y.realized, M('6200')); eq(y.trades, 3);
+    eq(y.byAsset.KCEL.dividends, M('475'));
+    var june = C.periodFlows(txs, { from: '2024-06-01', to: '2024-06-30', fx: fx, base: 'KZT', realizedEvents: st.realizedEvents });
+    eq(june.sells, M('37500')); eq(june.buys, 0); eq(june.dividends, 0, 'дивиденд в июле не попадает в июнь');
+    var other = C.periodFlows(txs, { from: '2024-01-01', to: '2024-12-31', fx: fx, base: 'KZT', accountId: 'B', realizedEvents: st.realizedEvents });
+    eq(other.realized + other.buys + other.dividends, 0, 'фильтр по счёту');
+    var usd = C.periodFlows([{ accountId: 'A', assetId: 'X', type: 'dividend', date: '2024-07-01', amount: 1000, tax: 100, currency: 'USD' }],
+      { from: '2024-01-01', to: '2024-12-31', fx: fx, base: 'KZT' });
+    eq(usd.dividends, M('4500'), '$9 по курсу 500 на дату выплаты');
+  });
+
+  test('Доходность за период по методу Дитца', function () {
+    var a = C.modifiedDietz(100000, 110000, [], '2025-01-01', '2025-12-31');
+    eq(a.gain, 10000); near(a.ret, 0.1, 1e-12, 'без пополнений');
+    var b = C.modifiedDietz(100000, 120000, [{ date: '2025-07-02', amount: 10000 }], '2025-01-01', '2025-12-31');
+    eq(b.gain, 10000, 'прирост без учёта пополнения'); eq(b.contributed, 10000);
+    near(b.ret, 10000 / (100000 + 10000 * (365 - 183) / 365), 1e-12, 'пополнение в середине года учитывается наполовину');
+    eq(C.modifiedDietz(0, 0, [], '2025-01-01', '2025-01-31').ret, null, 'нет денег — нет доходности');
+  });
+
   /* ---------- PIN-код ---------- */
 
   test('PIN-код: формат, соль, проверка', function () {

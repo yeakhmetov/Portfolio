@@ -90,18 +90,24 @@ header.top .acts{display:flex;gap:2px}
 /* графики */
 .chart{position:relative;margin-top:12px}
 .chart svg{display:block;width:100%;height:auto;overflow:visible}
+.chart{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent}
+.chart svg.has-sel .b:not(.sel){opacity:.45}
+.chart .b{cursor:pointer;transition:opacity .15s}
 .chart .tip{position:absolute;pointer-events:none;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:6px 9px;font-size:12px;
   box-shadow:0 4px 14px rgba(0,0,0,.12);white-space:nowrap;opacity:0;transition:opacity .1s;z-index:2}
 .chart .tip.on{opacity:1}
 .legend{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:13px;color:var(--muted);margin-top:8px}
 .legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:6px;vertical-align:-1px}
 .legend i.dash{height:2px;border-radius:0;width:14px;background:none;border-top:2px dashed var(--muted);vertical-align:3px}
-.donut-wrap{display:grid;grid-template-columns:132px 1fr;gap:16px;align-items:center;margin-top:12px}
+/* кольцо и легенда: легенда сжимается, а если места мало (узкий экран, крупный шрифт) — уходит под кольцо */
+.donut-wrap{display:flex;flex-wrap:wrap;gap:12px 16px;align-items:center;margin-top:12px}
+.donut-wrap>#donut{flex:0 0 132px;max-width:132px}
+.donut-wrap>.alloc{flex:1 1 11em;min-width:0}
 .alloc{list-style:none;margin:0;padding:0;font-size:14.5px}
 .alloc li{display:flex;align-items:center;gap:8px;padding:4px 0}
 .alloc li i{width:10px;height:10px;border-radius:3px;flex:none}
 .alloc li .n{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.alloc li .p{font-weight:600}
+.alloc li .p{font-weight:600;white-space:nowrap;flex:none}
 
 /* списки */
 .list{list-style:none;margin:0;padding:0}
@@ -114,6 +120,12 @@ header.top .acts{display:flex;gap:2px}
 .item .s{font-size:12.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .item .r{text-align:right;flex:none}
 .item .r .t{font-weight:600;font-size:15px}
+.seg-head{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap}
+.seg-head h2{margin:2px 0 0}
+.seg-sum{text-align:right;margin-left:auto}
+.seg-sum .v{font-weight:700;font-size:17px}
+.seg-sum .s{font-size:12.5px}
+.pos-total .hero{margin:2px 0 4px}
 .group-h{font-size:13px;color:var(--muted);font-weight:600;margin:14px 2px 6px}
 .empty{text-align:center;color:var(--muted);padding:28px 12px}
 .empty .btn{margin-top:12px}
@@ -169,7 +181,7 @@ nav.tabs button.on{color:var(--accent);font-weight:600}
 .rb:first-child{border-top:0}
 .rb .row{margin-bottom:6px}
 .rb input{width:72px;min-height:36px;text-align:right;padding:6px 8px}
-.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.sr{position:absolute;left:0;top:0;width:1px;height:1px;margin:-1px;padding:0;border:0;overflow:hidden;clip:rect(0 0 0 0);clip-path:inset(50%);white-space:nowrap}
 .more-links .item{cursor:pointer}
 .chip,.seg button,.demo-note button,.toast button{position:relative}
 .chip::after,.seg button::after,.demo-note button::after,.toast button::after{content:'';position:absolute;inset:-5px 0}
@@ -231,6 +243,17 @@ body.selmode nav.tabs,body.selmode .fab{visibility:hidden}
 .calcbar button.eq{background:var(--soft);border-color:var(--accent);font-weight:700}
 .calc-res{min-height:18px;text-align:right;font-size:13px;color:var(--muted);margin-top:3px}
 .calc-res.err{color:var(--down)}
+/* аналитика */
+.an-dates{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px;margin:4px 0 8px}
+.an-dates .field{margin-bottom:0;min-width:0}.an-dates .input{width:100%;min-width:0}
+.share-row{padding:9px 0;border-top:1px solid var(--line)}
+.share-row:first-child{border-top:0}
+.share-row .row{gap:8px;font-size:14.5px}
+.share-row .row>span:first-child{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.share-row .row>span:last-child{white-space:nowrap;font-weight:600}
+.share-row .track{height:6px;background:var(--bg);border-radius:3px;margin-top:6px;overflow:hidden}
+.share-row .track i{display:block;height:100%;border-radius:3px}
+.cmp{font-size:13px;margin-top:4px}
 /* выбранный сектор диаграммы */
 .donut-sel{min-height:22px;margin-top:8px;font-size:14px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .donut-sel i{width:10px;height:10px;border-radius:3px}
@@ -241,7 +264,7 @@ body.ask-top .sheet-bg{z-index:70}
 body.ask-top .sheet{z-index:71}
 .pad .nb{background:none;box-shadow:none;font:600 14px/1.2 var(--body);color:var(--accent)}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
-@media (max-width:380px){.hero{font-size:26px}.donut-wrap{grid-template-columns:110px 1fr}}
+@media (max-width:380px){.hero{font-size:26px}.donut-wrap>#donut{flex-basis:110px;max-width:110px}}
 </style>
 </head>
 <body>
@@ -258,7 +281,7 @@ body.ask-top .sheet{z-index:71}
   <section class="screen on" id="s-overview"></section>
   <section class="screen" id="s-positions"></section>
   <section class="screen" id="s-ops"></section>
-  <section class="screen" id="s-payouts"></section>
+  <section class="screen" id="s-analytics"></section>
   <section class="screen" id="s-more"></section>
 </main>
 
@@ -270,7 +293,7 @@ body.ask-top .sheet{z-index:71}
   <button data-tab="overview" class="on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l5-5 4 4 8-8"/><path d="M14 8h6v6"/></svg>Обзор</button>
   <button data-tab="positions"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M8 9h8M8 13h8M8 17h5"/></svg>Позиции</button>
   <button data-tab="ops"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4v16M7 20l-3-3M7 20l3-3M17 20V4M17 4l-3 3M17 4l3 3"/></svg>Операции</button>
-  <button data-tab="payouts"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>Выплаты</button>
+  <button data-tab="analytics"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 20.5h17"/><rect x="5" y="11" width="3.6" height="7" rx="1"/><rect x="10.2" y="5" width="3.6" height="13" rx="1"/><rect x="15.4" y="8.5" width="3.6" height="9.5" rx="1"/></svg>Аналитика</button>
   <button data-tab="more"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/></svg>Ещё</button>
 </div></nav>
 
@@ -342,7 +365,7 @@ const SERIES = ['var(--s1)', 'var(--s2)', 'var(--s3)', 'var(--s4)', 'var(--s5)',
 // Хранилище подключается на шаге 3 (IndexedDB). Пока данные живут в памяти.
 
 let S = null;
-const UI = { tab: 'overview', period: '1y', alloc: 'class', posAccount: 'all', posClass: 'all', posSort: 'value', opsQuery: '', opsType: 'all' };
+const UI = { an: { period: 'year', from: '', to: '', account: 'all', metric: 'payouts', limit: 4 }, tab: 'overview', period: '1y', alloc: 'class', posAccount: 'all', posClass: 'all', posSort: 'value', opsQuery: '', opsType: 'all' };
 
 function emptyState() {
   return { accounts: [], assets: [], txs: [], prices: {}, fx: [], targets: { stock: 40, bond: 25, fund: 20, crypto: 5, cash: 10 },
@@ -674,30 +697,64 @@ function donut(el, slices, centerLabel) {
 }
 
 // столбчатый график (одна серия)
-function barChart(el, labels, values, fmt) {
-  const W = 520, H = 160, P = { t: 10, b: 22 };
-  const max = Math.max(1, ...values);
-  const n = values.length, gap = 6, bw = (W - gap * (n - 1)) / n;
-  const bars = values.map((v, i) => {
-    const h = v > 0 ? Math.max(2, v / max * (H - P.t - P.b)) : 0;
-    const x = i * (bw + gap), y = H - P.b - h;
-    return `<g class="b" data-i="${i}"><rect x="${x.toFixed(1)}" y="${P.t}" width="${bw.toFixed(1)}" height="${H - P.t - P.b}" fill="transparent"/>
-      ${h ? `<path d="M${x.toFixed(1)} ${(H - P.b).toFixed(1)}V${(y + 4).toFixed(1)}q0 -4 4 -4h${(bw - 8).toFixed(1)}q4 0 4 4V${(H - P.b).toFixed(1)}Z" fill="var(--s1)"/>` : ''}
-      <text x="${(x + bw / 2).toFixed(1)}" y="${H - 5}" font-size="10.5" fill="var(--muted)" text-anchor="middle">${esc(labels[i])}</text></g>`;
-  }).join('');
-  el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Выплаты по месяцам"><line x1="0" x2="${W}" y1="${H - P.b}" y2="${H - P.b}" stroke="var(--line)"/>${bars}</svg><div class="tip"></div>`;
+// столбцы с несколькими рядами: положительные значения складываются вверх, отрицательные — вниз от нуля.
+// series: [{ name, color, values, colorOf? }] — colorOf(v) задаёт цвет столбца по знаку
+function barChart2(el, labels, series, fmt) {
+  const W = 520, H = 180, P = { t: 12, b: 24 };
+  const n = labels.length;
+  const pos = labels.map((_, i) => series.reduce((s, r) => s + Math.max(0, r.values[i] || 0), 0));
+  const neg = labels.map((_, i) => series.reduce((s, r) => s + Math.min(0, r.values[i] || 0), 0));
+  const max = Math.max(1, ...pos), min = Math.min(0, ...neg);
+  const span = max - min || 1, plotH = H - P.t - P.b;
+  const y = v => P.t + (max - v) / span * plotH;
+  const gap = n > 24 ? 2 : 6, bw = Math.max(2, (W - gap * (n - 1)) / n);
+  const every = Math.ceil(n / 12);
+  let bars = '';
+  for (let i = 0; i < n; i++) {
+    const x = i * (bw + gap);
+    let up = 0, down = 0, segs = '';
+    series.forEach((r, k) => {
+      const v = r.values[i] || 0;
+      if (!v) return;
+      const color = r.colorOf ? r.colorOf(v) : r.color;
+      const a = v > 0 ? up : down, b = a + v;
+      if (v > 0) up = b; else down = b;
+      const y1 = Math.min(y(a), y(b)), h = Math.max(1, Math.abs(y(a) - y(b)) - (k ? 2 : 0));
+      // скругление только на конце столбца
+      const last = v > 0 ? !series.slice(k + 1).some(o => (o.values[i] || 0) > 0) : !series.slice(k + 1).some(o => (o.values[i] || 0) < 0);
+      const rr = last ? Math.min(4, bw / 2, h) : 0;
+      if (v > 0) segs += `<path d="M${x.toFixed(1)} ${(y1 + h).toFixed(1)}V${(y1 + rr).toFixed(1)}q0 -${rr} ${rr} -${rr}h${(bw - 2 * rr).toFixed(1)}q${rr} 0 ${rr} ${rr}V${(y1 + h).toFixed(1)}Z" fill="${color}"/>`;
+      else segs += `<path d="M${x.toFixed(1)} ${y1.toFixed(1)}V${(y1 + h - rr).toFixed(1)}q0 ${rr} ${rr} ${rr}h${(bw - 2 * rr).toFixed(1)}q${rr} 0 ${rr} -${rr}V${y1.toFixed(1)}Z" fill="${color}"/>`;
+    });
+    bars += `<g class="b" data-i="${i}"><rect x="${x.toFixed(1)}" y="${P.t}" width="${bw.toFixed(1)}" height="${plotH}" fill="transparent"/>${segs}
+      ${i % every === 0 ? `<text x="${(x + bw / 2).toFixed(1)}" y="${H - 6}" font-size="10.5" fill="var(--muted)" text-anchor="middle">${esc(labels[i])}</text>` : ''}</g>`;
+  }
+  el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(series.map(r => r.name).join(', '))}">
+    <line x1="0" x2="${W}" y1="${y(0).toFixed(1)}" y2="${y(0).toFixed(1)}" stroke="var(--line)"/>${bars}</svg><div class="tip"></div>`;
   const svg = el.querySelector('svg'), tip = el.querySelector('.tip');
+  // нажатие закрепляет подсказку у столбца до нажатия на другой; мышью — ещё и подсказка при наведении
+  let sel = -1;
+  const show = i => {
+    if (i < 0) { tip.classList.remove('on'); return; }
+    const r = svg.getBoundingClientRect();
+    tip.innerHTML = `<div class="muted">${esc(labels[i])}</div>` + series.map(s2 => `<div>${series.length > 1 ? `<i style="display:inline-block;width:8px;height:8px;border-radius:2px;background:${s2.color};margin-right:6px"></i>${esc(s2.name)}: ` : ''}<b class="num">${fmt(s2.values[i] || 0)}</b></div>`).join('');
+    tip.classList.add('on');
+    const cxp = (i * (bw + gap) + bw / 2) / W * r.width;
+    tip.style.left = Math.min(Math.max(0, cxp - tip.offsetWidth / 2), r.width - tip.offsetWidth) + 'px';
+    tip.style.top = '-8px';
+  };
+  svg.addEventListener('contextmenu', e => e.preventDefault());
   svg.querySelectorAll('.b').forEach(g => {
-    const on = () => {
-      const i = +g.dataset.i, r = svg.getBoundingClientRect();
-      tip.innerHTML = `<div class="muted">${esc(labels[i])}</div><b class="num">${fmt(values[i])}</b>`;
-      tip.classList.add('on');
-      const cxp = (i * (bw + gap) + bw / 2) / W * r.width;
-      tip.style.left = Math.min(Math.max(0, cxp - tip.offsetWidth / 2), r.width - tip.offsetWidth) + 'px';
-      tip.style.top = '-8px';
-    };
-    g.addEventListener('pointerenter', on); g.addEventListener('pointerdown', on);
-    g.addEventListener('pointerleave', () => tip.classList.remove('on'));
+    const i = +g.dataset.i;
+    g.addEventListener('click', () => {
+      sel = i;
+      svg.classList.add('has-sel');
+      svg.querySelectorAll('.b.sel').forEach(x => x.classList.remove('sel'));
+      g.classList.add('sel');
+      show(i);
+    });
+    g.addEventListener('pointerenter', e => { if (e.pointerType === 'mouse') show(i); });
+    g.addEventListener('pointerleave', e => { if (e.pointerType === 'mouse') show(sel); });
   });
 }
 
@@ -814,13 +871,13 @@ function renderOverview() {
       <div class="row"><h2 style="margin:0">Динамика</h2></div>
       <div class="seg" style="margin-top:10px" role="tablist">${PERIODS.map(p => `<button data-period="${p[0]}" class="${p[0] === UI.period ? 'on' : ''}" role="tab" aria-selected="${p[0] === UI.period}">${p[1]}</button>`).join('')}</div>
       <div class="chart" id="hist-chart" aria-hidden="true"></div>
-      <table class="sr"><caption>Динамика стоимости портфеля</caption><tr><th>Дата</th><th>Стоимость</th><th>Вложено</th></tr>${hist.labels.map((l, i) => i % 8 === 0 || i === hist.labels.length - 1 ? `<tr><td>${esc(l)}</td><td>${money(hist.value[i], base, { digits: 0 })}</td><td>${money(hist.invested[i], base, { digits: 0 })}</td></tr>` : '').join('')}</table>
+      <div class="sr"><table><caption>Динамика стоимости портфеля</caption><tr><th>Дата</th><th>Стоимость</th><th>Вложено</th></tr>${hist.labels.map((l, i) => i % 8 === 0 || i === hist.labels.length - 1 ? `<tr><td>${esc(l)}</td><td>${money(hist.value[i], base, { digits: 0 })}</td><td>${money(hist.invested[i], base, { digits: 0 })}</td></tr>` : '').join('')}</table></div>
       <div class="legend"><span><i style="background:var(--s1)"></i>Стоимость</span><span><i class="dash"></i>Вложено</span></div>
     </div>
 
     <div class="card">
       <h2>Структура</h2>
-      <div class="chips">${[['class', 'Классы'], ['currency', 'Валюты'], ['account', 'Счета'], ['sector', 'Секторы']].map(a => `<button class="chip ${UI.alloc === a[0] ? 'on' : ''}" data-alloc="${a[0]}">${a[1]}</button>`).join('')}</div>
+      <div class="chips">${[['class', 'Классы'], ['currency', 'Валюты'], ['sector', 'Секторы'], ['account', 'Счета']].map(a => `<button class="chip ${UI.alloc === a[0] ? 'on' : ''}" data-alloc="${a[0]}">${a[1]}</button>`).join('')}</div>
       <div class="donut-wrap"><div id="donut" role="group" aria-label="Структура: нажмите на сектор"></div>
         <ul class="alloc">${alloc.map(a => `<li><i style="background:${a.color}"></i><span class="n">${esc(UI.alloc === 'account' ? (d.accounts[a.key] || {}).name || a.label : a.label)}</span><span class="p num">${pct(allocTotal ? a.value / allocTotal : 0)}</span></li>`).join('')}</ul>
       </div>
@@ -854,6 +911,14 @@ function renderPositions() {
   const sorters = { value: (a, b) => b.valueBase - a.valueBase, pnl: (a, b) => (b.pnlPct || 0) - (a.pnlPct || 0), name: (a, b) => a.asset.ticker.localeCompare(b.asset.ticker) };
   rows.sort(sorters[UI.posSort]);
   const total = rows.reduce((s, r) => s + r.valueBase, 0);
+  // сегменты по валюте позиции: базовая валюта первой, остальные — по убыванию стоимости
+  const segMap = {};
+  rows.forEach(r => {
+    const g = segMap[r.currency] || (segMap[r.currency] = { cur: r.currency, rows: [], value: 0, cost: 0, valueBase: 0 });
+    g.rows.push(r); g.value += r.value; g.cost += r.cost; g.valueBase += r.valueBase;
+  });
+  const segs = Object.values(segMap).map(g => Object.assign(g, { pnl: g.value - g.cost }))
+    .sort((a, b) => (b.cur === base) - (a.cur === base) || b.valueBase - a.valueBase);
   const groupsPresent = GROUPS.filter(g => d.sum.rows.some(r => groupOf(r.asset.class) === g.key));
   el.innerHTML = `
     <div class="chips" style="margin-bottom:8px">
@@ -868,18 +933,34 @@ function renderPositions() {
         <option value="name" ${UI.posSort === 'name' ? 'selected' : ''}>По тикеру</option>
       </select>
     </div>
-    <div class="card">
-      <div class="row"><span class="label">${rows.length} ${plural(rows.length, 'позиция', 'позиции', 'позиций')}</span><span class="num" style="font-weight:600">${money(total, base, { digits: 0 })}</span></div>
-      ${rows.length ? `<ul class="list" style="margin-top:6px">${rows.map(r => `
+    ${rows.length ? `<div class="card pos-total">
+      <div class="label">Все позиции · ${rows.length} ${plural(rows.length, 'позиция', 'позиции', 'позиций')}</div>
+      <div class="hero num">${money(total, base, { digits: 0 })}</div>
+      ${segs.length > 1 ? `<div class="label">${segs.map(g => `${esc(segName(g.cur))}: ${money(g.valueBase, base, { digits: 0 })}`).join(' · ')}</div>` : ''}
+    </div>` : ''}
+    ${segs.map(g => `<section class="card" aria-label="${esc(segName(g.cur))}">
+      <div class="seg-head">
+        <h2>${esc(segName(g.cur))}</h2>
+        <div class="seg-sum">
+          <div class="num v">${money(g.value, g.cur, g.cur === base ? { digits: 0 } : {})}</div>
+          ${g.cur !== base ? `<div class="num label">≈ ${money(g.valueBase, base, { digits: 0 })}</div>` : ''}
+          <div class="num s ${cls(g.pnl)}">${arrow(g.pnl)}${money(Math.abs(g.pnl), g.cur, g.cur === base ? { digits: 0 } : {})} · ${pct(Math.abs(g.cost ? g.pnl / g.cost : 0))}</div>
+        </div>
+      </div>
+      <ul class="list" style="margin-top:6px">${g.rows.map(r => `
         <li class="item tap" data-asset="${esc(r.assetId)}" data-account="${esc(r.accountId)}">
           <div class="badge" aria-hidden="true">${tickerBadge(r.asset)}</div>
           <div class="main kb" tabindex="0" role="button"><div class="t">${esc(r.asset.name)}</div><div class="s num">${C.formatQty(r.qty)} шт · ${esc((d.accounts[r.accountId] || {}).name || '')}${r.hasPrice ? (r.price.source !== 'demo' && QT.isStale(r.asset, r.price, Date.now()) ? ' · <span class="stale">цена устарела</span>' : '') : ' · нет цены'}</div></div>
-          <div class="r"><div class="t num">${money(r.valueBase, base, { digits: 0 })}</div><div class="s num ${cls(r.pnl)}">${arrow(r.pnl)}${pct(Math.abs(r.pnlPct || 0))}</div></div>
-        </li>`).join('')}</ul>` : '<div class="empty">Нет позиций по выбранным фильтрам</div>'}
-    </div>
+          <div class="r"><div class="t num">${money(r.value, r.currency, r.currency === base ? { digits: 0 } : {})}</div><div class="s num ${cls(r.pnl)}">${arrow(r.pnl)}${pct(Math.abs(r.pnlPct || 0))}</div></div>
+        </li>`).join('')}</ul>
+    </section>`).join('')}
+    ${rows.length ? '' : '<div class="card"><div class="empty">Нет позиций по выбранным фильтрам</div></div>'}
     ${d.cashRows.length && UI.posClass === 'all' ? `<div class="card"><h2>Деньги на счетах</h2><ul class="list">${d.cashRows.filter(c => UI.posAccount === 'all' || c.accountId === UI.posAccount).map(c => `
       <li class="item"><div class="badge">${esc(c.currency)}</div><div class="main"><div class="t">${esc((d.accounts[c.accountId] || {}).name || '')}</div></div><div class="r"><div class="t num ${c.minor < 0 ? 'down' : ''}">${money(c.minor, c.currency)}</div></div></li>`).join('')}</ul></div>` : ''}`;
 }
+
+const SEG_NAMES = { KZT: 'Тенговые позиции', USD: 'Долларовые позиции', EUR: 'Позиции в евро', RUB: 'Рублёвые позиции', CNY: 'Позиции в юанях', GBP: 'Позиции в фунтах' };
+function segName(cur) { return SEG_NAMES[cur] || 'Позиции в ' + cur; }
 
 function plural(n, one, few, many) {
   const m10 = n % 10, m100 = n % 100;
@@ -1233,39 +1314,139 @@ function openTxForm(existing, preset) {
 
 /* ================= экран: выплаты ================= */
 
-function renderPayouts() {
-  const el = document.getElementById('s-payouts');
-  const d = derive(), base = d.base;
-  const pays = S.txs.filter(t => t.type === 'dividend' || t.type === 'coupon')
-    .map(t => ({ t, net: d.fx.convert((t.amount || 0) - (t.tax || 0), t.currency, base, t.date) || 0 }))
-    .sort((a, b) => a.t.date < b.t.date ? 1 : -1);
-  const now = d.date, year = now.slice(0, 4);
-  const months = [];
-  for (let i = 11; i >= 0; i--) {
-    const dt = new Date(Date.UTC(+year, +now.slice(5, 7) - 1 - i, 1));
-    months.push(dt.toISOString().slice(0, 7));
+const AN_PERIODS = [['month', 'Месяц'], ['prev-month', 'Прошлый месяц'], ['quarter', 'Квартал'], ['year', 'Год'],
+  ['prev-year', 'Прошлый год'], ['12m', '12 месяцев'], ['all', 'Всё время'], ['custom', 'Период…']];
+
+// данные аналитики за выбранный период; считаются один раз до следующего изменения данных
+function analyticsData() {
+  const d = derive(), today = d.date, an = UI.an, method = S.settings.method;
+  const first = S.txs.reduce((m, t) => t.date < m ? t.date : m, today);
+  let [from, to] = an.period === 'custom' ? [an.from || first, an.to || today] : C.periodRange(an.period, today, first);
+  if (from > to) [from, to] = [to, from];
+  const acc = an.account === 'all' ? null : an.account;
+  const key = [from, to, acc, method].join('|');
+  d.an = d.an || {};
+  if (d.an[key]) return d.an[key];
+  const txs = acc ? S.txs.filter(t => t.accountId === acc || t.toAccountId === acc) : S.txs;
+  const events = C.computePortfolio(S.txs, { method }).realizedEvents;
+  const opt = (a, b) => ({ from: a, to: b, fx: d.fx, base: d.base, accountId: acc, realizedEvents: events });
+  const flows = C.periodFlows(S.txs, opt(from, to));
+  const [pf, pt] = C.previousRange(from, to);
+  const prev = C.periodFlows(S.txs, opt(pf, pt));
+  // стоимость на дату: операции до этой даты, цены и курсы на эту дату
+  const valueAt = date => {
+    const st = C.computePortfolio(txs.filter(t => t.date <= date), { method });
+    return C.summarize(st, Object.assign({}, d.ctx, { prices: pricesAt(date), date })).total;
+  };
+  // вложения инвестора (плюс — внесено, минус — выведено), как в расчёте доходности
+  const contrib = C.investorFlows(txs, { rows: [] }, { fx: d.fx, base: d.base, date: today, cash: {}, accounts: d.accounts })
+    .map(f => ({ date: f.date, amount: -f.amount }));
+  const contribIn = (a, b) => contrib.filter(f => f.date >= a && f.date <= b);
+  const v0 = valueAt(C.addDaysIso(from, -1)), v1 = valueAt(to);
+  const dz = C.modifiedDietz(v0, v1, contribIn(from, to), from, to);
+  const bk = C.periodBuckets(from, to);
+  let pv = v0;
+  const buckets = bk.list.map(b => {
+    const f = C.periodFlows(S.txs, opt(b.from, b.to)), v = valueAt(b.to);
+    const g = C.modifiedDietz(pv, v, contribIn(b.from, b.to), b.from, b.to);
+    pv = v;
+    return { label: b.label, from: b.from, to: b.to, div: f.dividends, cpn: f.coupons, dep: f.deposits, wd: f.withdrawals, gain: g.gain };
+  });
+  const pays = txs.filter(t => (t.type === 'dividend' || t.type === 'coupon') && t.date >= from && t.date <= to)
+    .sort((a, b) => a.date < b.date ? 1 : a.date > b.date ? -1 : 0);
+  return (d.an[key] = { from, to, acc, flows, prev, v0, v1, dz, unit: bk.unit, buckets, pays });
+}
+
+function renderAnalytics() {
+  const el = document.getElementById('s-analytics');
+  if (!S.txs.length) {
+    el.innerHTML = `<div class="card empty"><h2>Пока нечего анализировать</h2><p>Добавьте сделки, пополнения и выплаты — здесь появятся итоги по периодам.</p><button class="btn primary" data-act="add">Добавить операцию</button></div>`;
+    return;
   }
-  const byMonth = months.map(m => pays.filter(p => p.t.date.slice(0, 7) === m).reduce((s, p) => s + p.net, 0));
-  const ytd = pays.filter(p => p.t.date.slice(0, 4) === year).reduce((s, p) => s + p.net, 0);
-  const last12 = byMonth.reduce((a, b) => a + b, 0);
-  const divs = pays.filter(p => p.t.type === 'dividend' && months.includes(p.t.date.slice(0, 7))).reduce((s, p) => s + p.net, 0);
+  const d = derive(), base = d.base, an = UI.an, A = analyticsData(), f = A.flows;
+  const m = v => money(v, base, { digits: 0 });
+  const signed = v => `<span class="num ${cls(v)}">${arrow(v)}${m(Math.abs(v))}</span>`;
+  const days = C.daysBetween(A.from, A.to) + 1;
+  const payouts = f.dividends + f.coupons, prevPay = A.prev.dividends + A.prev.coupons;
+  const payCmp = prevPay > 0 ? (payouts - prevPay) / prevPay : null;
+  const income = payouts + f.realized - f.fees;
+  const UNIT = { week: 'по неделям', month: 'по месяцам', year: 'по годам' }[A.unit];
+  const metric = an.metric;
+  const byAsset = Object.keys(f.byAsset).map(id => ({ id, a: d.assets[id], v: f.byAsset[id].dividends + f.byAsset[id].coupons, n: f.byAsset[id].count }))
+    .sort((x, y) => y.v - x.v);
+  const maxAsset = byAsset.length ? Math.max(1, byAsset[0].v) : 1;
   const groups = [];
-  pays.forEach(p => { const k = p.t.date.slice(0, 7); let g = groups[groups.length - 1]; if (!g || g.k !== k) groups.push(g = { k, list: [], sum: 0 }); g.list.push(p.t); g.sum += p.net; });
-  el.innerHTML = pays.length ? `
+  A.pays.forEach(t => { const k = t.date.slice(0, 7); let g = groups[groups.length - 1]; if (!g || g.k !== k) groups.push(g = { k, list: [], sum: 0 }); g.list.push(t); g.sum += d.fx.convert((t.amount || 0) - (t.tax || 0), t.currency, base, t.date) || 0; });
+  const accounts = S.accounts.filter(a => !a.archived);
+  el.innerHTML = `
+    <div class="chips" role="radiogroup" aria-label="Период">${AN_PERIODS.map(p => `<button class="chip ${an.period === p[0] ? 'on' : ''}" data-anp="${p[0]}" role="radio" aria-checked="${an.period === p[0]}">${p[1]}</button>`).join('')}</div>
+    ${an.period === 'custom' ? `<div class="an-dates"><label class="field"><span>С</span><input class="input" type="date" id="an-from" value="${A.from}" max="${d.date}"></label><label class="field"><span>По</span><input class="input" type="date" id="an-to" value="${A.to}" max="${d.date}"></label></div>` : ''}
+    ${accounts.length > 1 ? `<select class="input" id="an-acc" aria-label="Счёт" style="margin:4px 0 10px"><option value="all">Все счета</option>${accounts.map(a => `<option value="${a.id}" ${an.account === a.id ? 'selected' : ''}>${esc(a.name)}</option>`).join('')}</select>` : ''}
+
     <div class="card">
-      <div class="label">Получено за ${year} год, после налогов</div>
-      <div class="hero num">${money(ytd, base, { digits: 0 })}</div>
+      <div class="label">${fdate(A.from, true)} – ${fdate(A.to, true)} · ${days} ${plural(days, 'день', 'дня', 'дней')}</div>
+      <div class="label" style="margin-top:8px">Прирост портфеля</div>
+      <div class="hero num ${cls(A.dz.gain)}">${arrow(A.dz.gain)}${m(Math.abs(A.dz.gain))}</div>
+      <div class="label">Доходность за период: <b class="num ${cls(A.dz.ret || 0)}">${A.dz.ret == null ? '—' : pct(A.dz.ret, true)}</b></div>
       <div class="stats">
-        <div><div class="label">За 12 месяцев</div><div class="v num">${money(last12, base, { digits: 0 })}</div></div>
-        <div><div class="label">В среднем в месяц</div><div class="v num">${money(Math.round(last12 / 12), base, { digits: 0 })}</div></div>
-        <div><div class="label">Дивиденды</div><div class="v num">${money(divs, base, { digits: 0 })}</div></div>
-        <div><div class="label">Купоны</div><div class="v num">${money(last12 - divs, base, { digits: 0 })}</div></div>
+        <div><div class="label">Стоимость на начало</div><div class="v num">${m(A.v0)}</div></div>
+        <div><div class="label">Стоимость на конец</div><div class="v num">${m(A.v1)}</div></div>
+        <div><div class="label">Пополнения</div><div class="v num">${m(f.deposits)}</div></div>
+        <div><div class="label">Выводы</div><div class="v num">${m(f.withdrawals)}</div></div>
+      </div>
+      <p class="hint" style="margin:10px 0 0">Прирост — изменение стоимости без учёта пополнений и выводов. Доходность учитывает, когда внутри периода вносились деньги.</p>
+    </div>
+
+    <div class="card">
+      <h2>Доходы</h2>
+      <div class="stats" style="margin-top:0">
+        <div><div class="label">Дивиденды</div><div class="v num">${m(f.dividends)}</div></div>
+        <div><div class="label">Купоны</div><div class="v num">${m(f.coupons)}</div></div>
+        <div><div class="label">Зафиксированная прибыль</div><div class="v">${signed(f.realized)}</div></div>
+        <div><div class="label">Комиссии</div><div class="v num">${m(f.fees)}</div></div>
+        <div><div class="label">Налоги удержаны</div><div class="v num">${m(f.taxes)}</div></div>
+        <div><div class="label">Итого доходов</div><div class="v">${signed(income)}</div></div>
+      </div>
+      <div class="cmp muted">Выплаты: <b class="num">${m(payouts)}</b>${payCmp == null ? '' : ` · к прошлому периоду <b class="num ${cls(payCmp)}">${arrow(payCmp)}${pct(Math.abs(payCmp))}</b>`}</div>
+      <p class="hint" style="margin:6px 0 0">Итого доходов — выплаты после налога и зафиксированная прибыль за вычетом комиссий.</p>
+    </div>
+
+    <div class="card">
+      <h2>Динамика ${UNIT}</h2>
+      <div class="seg" role="tablist">${[['payouts', 'Выплаты'], ['cash', 'Пополнения'], ['gain', 'Прирост']].map(x => `<button data-anm="${x[0]}" class="${metric === x[0] ? 'on' : ''}" role="tab" aria-selected="${metric === x[0]}">${x[1]}</button>`).join('')}</div>
+      <div class="chart" id="an-chart" aria-hidden="true"></div>
+      <div class="legend">${metric === 'payouts' ? '<span><i style="background:var(--s1)"></i>Дивиденды</span><span><i style="background:var(--s2)"></i>Купоны</span>'
+        : metric === 'cash' ? '<span><i style="background:var(--s1)"></i>Пополнения</span><span><i style="background:var(--s2)"></i>Выводы</span>'
+        : '<span><i style="background:var(--up)"></i>Рост</span><span><i style="background:var(--down)"></i>Снижение</span>'}</div>
+      <div class="sr"><table><caption>Динамика ${UNIT}</caption><tr><th>Период</th><th>Дивиденды</th><th>Купоны</th><th>Пополнения</th><th>Выводы</th><th>Прирост</th></tr>${A.buckets.map(b => `<tr><td>${esc(b.label)}</td><td>${m(b.div)}</td><td>${m(b.cpn)}</td><td>${m(b.dep)}</td><td>${m(b.wd)}</td><td>${m(b.gain)}</td></tr>`).join('')}</table></div>
+    </div>
+
+    <div class="card">
+      <h2>Сделки</h2>
+      <div class="stats" style="margin-top:0">
+        <div><div class="label">Куплено</div><div class="v num">${m(f.buys)}</div></div>
+        <div><div class="label">Продано</div><div class="v num">${m(f.sells)}</div></div>
+        <div><div class="label">Сделок</div><div class="v num">${f.trades}</div></div>
+        <div><div class="label">Выплат</div><div class="v num">${f.payouts}</div></div>
       </div>
     </div>
-    <div class="card"><h2>По месяцам</h2><div class="chart" id="pay-chart" aria-hidden="true"></div><table class="sr"><caption>Выплаты по месяцам</caption>${months.map((m, i) => `<tr><td>${MONTHS_N[+m.slice(5) - 1]} ${m.slice(0, 4)}</td><td>${money(byMonth[i], base, { digits: 0 })}</td></tr>`).join('')}</table></div>
-    ${groups.slice(0, 12).map(g => `<div class="group-h row"><span>${MONTHS_N[+g.k.slice(5) - 1]} ${g.k.slice(0, 4)}</span><span class="num">${money(g.sum, base, { digits: 0 })}</span></div><div class="card" style="padding:4px 16px"><ul class="list">${g.list.map(opItem).join('')}</ul></div>`).join('')}`
-    : `<div class="card empty"><h2>Выплат пока нет</h2><p>Добавьте полученные дивиденды и купоны — здесь появится календарь и сумма за год.</p><button class="btn primary" data-act="add" data-preset="dividend">Добавить дивиденд</button></div>`;
-  if (pays.length) barChart(document.getElementById('pay-chart'), months.map(m => MONTHS[+m.slice(5) - 1]), byMonth, v => money(v, base, { digits: 0 }));
+
+    <div class="card">
+      <h2>Выплаты по бумагам</h2>
+      ${byAsset.length ? byAsset.map((x, i) => `<div class="share-row"><div class="row"><span>${esc(x.a ? x.a.ticker.replace(/_.*/, '') + ' · ' + x.a.name : x.id)}</span><span class="num">${m(x.v)}</span></div>
+        <div class="track" aria-hidden="true"><i style="width:${(x.v / maxAsset * 100).toFixed(1)}%;background:${i === 0 ? 'var(--hi)' : 'var(--s1)'}"></i></div></div>`).join('')
+        : '<div class="muted" style="font-size:14px">В этом периоде выплат не было.</div>'}
+    </div>
+
+    ${groups.slice(0, an.limit).map(g => `<div class="group-h row"><span>${MONTHS_N[+g.k.slice(5) - 1]} ${g.k.slice(0, 4)}</span><span class="num">${m(g.sum)}</span></div><div class="card" style="padding:4px 16px"><ul class="list">${g.list.map(opItem).join('')}</ul></div>`).join('')}
+    ${groups.length > an.limit ? '<button class="btn block" data-act="an-more">Показать ещё выплаты</button>' : ''}`;
+  const labels = A.buckets.map(b => b.label);
+  const series = metric === 'payouts'
+    ? [{ name: 'Дивиденды', color: 'var(--s1)', values: A.buckets.map(b => b.div) }, { name: 'Купоны', color: 'var(--s2)', values: A.buckets.map(b => b.cpn) }]
+    : metric === 'cash'
+      ? [{ name: 'Пополнения', color: 'var(--s1)', values: A.buckets.map(b => b.dep) }, { name: 'Выводы', color: 'var(--s2)', values: A.buckets.map(b => -b.wd) }]
+      : [{ name: 'Прирост', color: 'var(--up)', colorOf: v => v >= 0 ? 'var(--up)' : 'var(--down)', values: A.buckets.map(b => b.gain) }];
+  barChart2(document.getElementById('an-chart'), labels, series, v => (v < 0 ? '−' : '') + m(Math.abs(v)));
 }
 
 /* ================= экран: ещё (ребалансировка и настройки) ================= */
@@ -1679,7 +1860,7 @@ const Quotes = {
     const parts = [];
     const kz = need('kase').concat(need('aix'));
     if (kz.length && !S.settings.proxyUrl) parts.push(`${kz.slice(0, 4).join(', ')}${kz.length > 4 ? '…' : ''} — нужен прокси для KASE/AIX`);
-    const gl = need('global');
+    const gl = need('global').concat(need('us'));
     if (gl.length && !S.settings.twelveDataKey && !S.settings.proxyUrl) parts.push(`${gl.slice(0, 4).join(', ')} — нужен ключ Twelve Data`);
     return parts.length ? 'Котировки не обновляются: ' + parts.join('; ') + '.' : '';
   },
@@ -1781,10 +1962,11 @@ const Quotes = {
     if (base) {
       await run('Прокси', async () => {
         const h = await this.fetchJson(base + '/health', hdr);
-        return 'работает; KASE и AIX: ' + (h.sources && h.sources.kase ? 'ключи брокера заданы' : 'не заданы ключи брокера (TN_API_KEY, TN_SECRET)');
+        return 'работает; KASE, AIX и США: ' + (h.sources && h.sources.kase ? 'ключи брокера заданы' : 'не заданы ключи брокера (TN_API_KEY, TN_SECRET)');
       });
       await run('Нацбанк РК', async () => { const j = await this.fetchJson(base + '/fx', hdr); const usd = (j.rates || []).find(r => r.base === 'USD'); return usd ? 'USD = ' + usd.rate + ' ₸ на ' + fdate(usd.date, true) : 'нет курса USD'; });
       await run('KASE', async () => { const j = await this.fetchJson(base + '/quotes?symbols=kase:KCEL', hdr); const q = (j.quotes || [])[0]; if (!q) throw new Error((j.errors && j.errors['kase:KCEL']) || 'нет котировки'); return 'KCEL = ' + q.price + ' ' + (q.currency || ''); });
+      await run('Freedom (США)', async () => { const j = await this.fetchJson(base + '/quotes?symbols=us:AAPL', hdr); const q = (j.quotes || [])[0]; if (!q) throw new Error((j.errors && j.errors['us:AAPL']) || 'нет котировки'); return 'AAPL = ' + q.price + ' ' + (q.currency || ''); });
       await run('AIX', async () => { const j = await this.fetchJson(base + '/quotes?symbols=aix:KAP', hdr); const q = (j.quotes || [])[0]; if (!q) throw new Error((j.errors && j.errors['aix:KAP']) || 'нет котировки'); return 'KAP = ' + q.price + ' ' + (q.currency || ''); });
     } else out.push({ ok: false, name: 'KASE, AIX, Нацбанк', msg: 'не указан адрес прокси' });
     await run('MOEX', async () => { const j = await this.fetchJson('https://iss.moex.com/iss/engines/stock/markets/shares/securities.json?iss.meta=off&iss.only=marketdata&securities=SBER&marketdata.columns=SECID,BOARDID,LAST,LCURRENTPRICE'); const q = QT.parseMoex(j).SBER; return q ? 'SBER = ' + q.price + ' ₽' : 'ответ получен'; });
@@ -2302,8 +2484,8 @@ async function appUpdate() {
 
 /* ================= оболочка ================= */
 
-const TITLES = { overview: 'Обзор', positions: 'Позиции', ops: 'Операции', payouts: 'Выплаты', more: 'Ещё' };
-const RENDER = { overview: renderOverview, positions: renderPositions, ops: renderOps, payouts: renderPayouts, more: renderMore };
+const TITLES = { overview: 'Обзор', positions: 'Позиции', ops: 'Операции', analytics: 'Аналитика', more: 'Ещё' };
+const RENDER = { overview: renderOverview, positions: renderPositions, ops: renderOps, analytics: renderAnalytics, more: renderMore };
 
 function render() {
   document.getElementById('title').textContent = TITLES[UI.tab];
@@ -2394,6 +2576,10 @@ document.addEventListener('click', e => {
   if (askBtn) { answerAsk(askBtn.dataset.ask === '1'); return; }
   const tab = e.target.closest('nav.tabs [data-tab]');
   if (tab) { go(tab.dataset.tab); return; }
+  const anp = e.target.closest('[data-anp]');
+  if (anp) { UI.an.period = anp.dataset.anp; UI.an.limit = 4; render(); return; }
+  const anm = e.target.closest('[data-anm]');
+  if (anm) { UI.an.metric = anm.dataset.anm; render(); return; }
   const seg = e.target.closest('#donut path[data-k]');
   if (seg) { UI.allocSel = UI.allocSel === seg.dataset.k ? null : seg.dataset.k; renderOverview(); return; }
   // выбор нескольких операций: короткое нажатие отмечает, долгое — начинает выбор
@@ -2422,6 +2608,7 @@ document.addEventListener('click', e => {
   if (!act) return;
   switch (act.dataset.act) {
     case 'close': closeSheet(); break;
+    case 'an-more': UI.an.limit += 6; render(); break;
     case 'sel-cancel': Sel.exit(); break;
     case 'sel-del': Sel.del(); break;
     case 'app-update': appUpdate(); break;
@@ -2472,6 +2659,13 @@ document.addEventListener('change', e => {
   const t = e.target;
   if (t.id === 'pos-account') { UI.posAccount = t.value; render(); }
   else if (t.id === 'pos-sort') { UI.posSort = t.value; render(); }
+  else if (t.id === 'an-from' || t.id === 'an-to') {
+    // берём обе даты из полей и сразу упорядочиваем, чтобы состояние совпадало с тем, что видно на экране
+    let f = document.getElementById('an-from').value, to = document.getElementById('an-to').value;
+    if (f && to && f > to) [f, to] = [to, f];
+    UI.an.from = f; UI.an.to = to; render();
+  }
+  else if (t.id === 'an-acc') { UI.an.account = t.value; render(); }
   else if (t.id === 'set-base') { S.settings.baseCurrency = t.value; UI.contrib = null; commit(); }
   else if (t.id === 'set-theme') { S.settings.theme = t.value; commit(); }
   else if (t.id === 'set-method') { S.settings.method = t.value; commit(); }

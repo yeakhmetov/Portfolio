@@ -1,6 +1,6 @@
 # Прокси котировок
 
-Небольшой Cloudflare Worker, через который приложение получает котировки **KASE** и **AIX**
+Небольшой Cloudflare Worker, через который приложение получает котировки **KASE**, **AIX** и **бирж США** (через API Freedom)
 и официальные курсы **Национального банка РК**. Браузер не может запросить эти сайты напрямую:
 они не отдают CORS-заголовки. Прокси ничего не хранит и не пишет в журнал, получает только тикеры.
 
@@ -9,13 +9,16 @@
 ## Развёртывание за 5 шагов
 
 1. Зарегистрируйтесь на [dash.cloudflare.com](https://dash.cloudflare.com) (бесплатно).
-2. **Workers & Pages → Create → Create Worker**, назовите, например, `portfolio-proxy`, нажмите **Deploy**.
+2. В меню слева откройте **Compute (Workers) → Workers & Pages** (в старом меню — просто **Workers & Pages**;
+   можно найти через поиск вверху или открыть [dash.cloudflare.com/?to=/:account/workers-and-pages](https://dash.cloudflare.com/?to=/:account/workers-and-pages)).
+   Нажмите **Create application** (или **Create**) → **Start with Hello World!** (в старом меню — **Create Worker**),
+   назовите, например, `portfolio-proxy`, нажмите **Deploy**.
 3. **Edit code**: удалите пример, вставьте содержимое [`worker.js`](worker.js), нажмите **Deploy**.
 4. **Settings → Variables and Secrets** — добавьте:
    | Имя | Тип | Значение |
    |---|---|---|
    | `ACCESS_TOKEN` | Secret | любой длинный пароль — чтобы прокси не могли использовать посторонние |
-   | `ALLOWED_ORIGIN` | Text | адрес приложения, например `https://yeakhmetov.github.io` |
+   | `ALLOWED_ORIGIN` | Text | необязательно. Если пользуетесь APK — не задавайте: у приложения на телефоне адрес `https://localhost`. Для одной веб-версии — её адрес, например `https://yeakhmetov.github.io` |
    | `TN_API_KEY` | Secret | публичный ключ API Freedom (Tradernet) — для KASE и AIX |
    | `TN_SECRET` | Secret | секретный ключ API Freedom (Tradernet) |
    | `TN_API_URL` | Text | необязательно; по умолчанию `https://tradernet.com/api` |
@@ -29,7 +32,7 @@
 
 ```
 curl -H "X-Access-Token: <ACCESS_TOKEN>" https://portfolio-proxy.<имя>.workers.dev/health
-curl -H "X-Access-Token: <ACCESS_TOKEN>" "https://portfolio-proxy.<имя>.workers.dev/quotes?symbols=kase:KCEL,aix:KAP"
+curl -H "X-Access-Token: <ACCESS_TOKEN>" "https://portfolio-proxy.<имя>.workers.dev/quotes?symbols=kase:KCEL,aix:KAP,us:AAPL"
 curl -H "X-Access-Token: <ACCESS_TOKEN>" https://portfolio-proxy.<имя>.workers.dev/fx
 ```
 
