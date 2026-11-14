@@ -262,6 +262,9 @@ body.privacy header.top,body.privacy main,body.privacy nav.tabs,body.privacy .fa
 'use strict';
 const C = window.PortfolioCore;
 const QT = window.PortfolioQuotes;
+// приложение запущено как Android-приложение (Capacitor), а не в браузере
+const NATIVE = !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
+const nativePlugin = name => window.Capacitor.Plugins[name] || window.Capacitor.registerPlugin(name);
 
 /* ================= справочники ================= */
 
@@ -510,8 +513,13 @@ function derive() {
   const ctx = { assets, accounts, fx, base, date, prices: pricesAt(date) };
   const sum = C.summarize(state, ctx);
   const yd = addDays(date, -1);
-  // если вчерашней цены нет (бумага куплена сегодня), изменение за день по ней нулевое
-  const sumY = C.summarize(state, Object.assign({}, ctx, { prices: Object.assign({}, ctx.prices, pricesAt(yd)), date: yd }));
+  // изменение за день: сравниваем с ценой предыдущих торгов (не старше 4 дней — с учётом выходных).
+  // Если такой цены нет (бумага куплена сегодня или до этого была только цена сделки месяцы назад),
+  // изменение по бумаге нулевое
+  const prevPrices = Object.assign({}, ctx.prices);
+  const prevAll = pricesAt(yd), oldest = addDays(date, -4);
+  Object.keys(prevAll).forEach(id => { if (prevAll[id].date >= oldest) prevPrices[id] = prevAll[id]; });
+  const sumY = C.summarize(state, Object.assign({}, ctx, { prices: prevPrices, date: yd }));
   const flows = C.investorFlows(S.txs, sum, { fx, base, date, cash: state.cash, accounts });
   const flowsNoEnd = C.investorFlows(S.txs, { rows: [] }, { fx, base, date, cash: {}, accounts });
   const contributed = -flowsNoEnd.reduce((s, f) => s + f.amount, 0);
@@ -728,7 +736,8 @@ function renderOverview() {
   const allocTotal = alloc.reduce((a, b) => a + b.value, 0);
   const movers = s.rows.filter(r => r.hasPrice).map(r => {
     const py = priceAt(r.assetId, addDays(d.date, -1));
-    return { r, ch: py && py.price ? r.price.price / py.price - 1 : 0 };
+    const fresh = py && py.price && py.date >= addDays(d.date, -4);
+    return { r, ch: fresh ? r.price.price / py.price - 1 : 0 };
   });
   const seen = new Set();
   const byAsset = movers.filter(m => { if (seen.has(m.r.assetId)) return false; seen.add(m.r.assetId); return true; });
@@ -1292,7 +1301,21 @@ function addAccountSheet() {
 
 /* ================= резервная копия и импорт ================= */
 
+// Android-приложение: встроенный браузер не скачивает файлы, поэтому файл сохраняется во временную
+// папку и открывается системное меню «Поделиться» — сохранить на Диск, в «Файлы» или отправить себе
+async function nativeShareFile(name, text) {
+  const written = await nativePlugin('Filesystem').writeFile({ path: name, data: text, directory: 'CACHE', encoding: 'utf8' });
+  try {
+    await nativePlugin('Share').share({ title: name, files: [written.uri], dialogTitle: 'Сохранить или отправить файл' });
+    return true;
+  } catch (e) {
+    if (/cancel/i.test(String(e && e.message))) return false;
+    throw e;
+  }
+}
+
 function download(name, text, mime) {
+  if (NATIVE) return nativeShareFile(name, text).catch(e => { console.error(e); toast('Не удалось сохранить файл: ' + (e && e.message || e)); return false; });
   const blob = new Blob([text], { type: mime });
   let file = null;
   try { file = new File([blob], name, { type: mime }); } catch (e) { /* старый Safari */ }
@@ -1823,6 +1846,11 @@ function setInert() {
   ['header.top', 'main', 'nav.tabs', '#fab'].forEach(sel => { document.querySelector(sel).inert = sheetOn || Lock.on; });
   document.getElementById('sheet').inert = !sheetOn || Lock.on;
 }
+let sheetInHistory = false;
+window.addEventListener('popstate', () => {
+  if (document.getElementById('sheet').classList.contains('on')) closeSheet(true);
+  else sheetInHistory = false;
+});
 function openSheet(html) {
   const sh = document.getElementById('sheet');
   if (!sh.classList.contains('on')) lastFocus = document.activeElement;
@@ -1833,13 +1861,16 @@ function openSheet(html) {
   else { sh.removeAttribute('aria-labelledby'); sh.setAttribute('aria-label', 'Окно'); }
   sh.classList.add('on'); document.getElementById('sheet-bg').classList.add('on');
   setInert();
+  // запись в истории: системная кнопка «Назад» закрывает шторку, а не приложение
+  if (!sheetInHistory) { history.pushState({ sheet: true }, ''); sheetInHistory = true; }
   const first = sh.querySelector('input:not([type=hidden]),select,button:not([data-act=close])');
   setTimeout(() => (first || sh).focus && (first || sh).focus({ preventScroll: true }), 50);
 }
-function closeSheet() {
+function closeSheet(fromBack) {
   if (!document.getElementById('sheet').classList.contains('on')) return;
   document.getElementById('sheet').classList.remove('on'); document.getElementById('sheet-bg').classList.remove('on');
   setInert();
+  if (sheetInHistory) { sheetInHistory = false; if (fromBack !== true) history.back(); }
   if (lastFocus && lastFocus.focus) lastFocus.focus({ preventScroll: true });
 }
 
@@ -1940,7 +1971,7 @@ document.getElementById('fab').addEventListener('click', () => openTxForm());
 document.getElementById('eye').addEventListener('click', () => { S.settings.hideAmounts = !S.settings.hideAmounts; render(); Store.save(S); });
 if (window.matchMedia) matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => render());
 
-if ('serviceWorker' in navigator && location.protocol !== 'file:') navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).catch(() => {});
+if (!NATIVE && 'serviceWorker' in navigator && location.protocol !== 'file:') navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).catch(() => {});
 
 (async () => {
   await Store.init();

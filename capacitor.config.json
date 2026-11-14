@@ -1,0 +1,14 @@
+{
+  "appId": "io.github.yeakhmetov.portfolio",
+  "appName": "Портфель",
+  "webDir": "www",
+  "android": {
+    "allowMixedContent": false
+  },
+  "plugins": {
+    "SystemBars": {
+      "insetsHandling": "native",
+      "initialViewportFitValueHint": "cover"
+    }
+  }
+}

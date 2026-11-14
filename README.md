@@ -12,6 +12,16 @@
 откройте ссылку `https://<ваш-логин>.github.io/Portfolio/` и выберите «На экран «Домой»» (iPhone, Safari)
 или «Установить приложение» (Android, Chrome). После первой загрузки приложение работает без интернета.
 
+**Android-приложение (APK).** Свежая сборка всегда лежит по ссылке
+[releases/download/android-latest/portfolio.apk](https://github.com/yeakhmetov/Portfolio/releases/download/android-latest/portfolio.apk):
+откройте её на телефоне, скачайте и разрешите установку из этого источника. Обновления ставятся поверх,
+данные сохраняются. APK собирается GitHub Actions ([.github/workflows/android.yml](.github/workflows/android.yml))
+из тех же файлов, что и веб-версия, с помощью [Capacitor](https://capacitorjs.com); локально:
+`npm ci && npm run android:sync`, затем `cd android && ./gradlew assembleRelease`.
+Резервная копия и экспорт CSV в приложении сохраняются через меню «Поделиться».
+Ключ подписи `android/app/portfolio-sideload.jks` лежит в репозитории — он нужен, чтобы обновления
+ставились поверх, и подходит для личной установки.
+
 **На компьютере.** Откройте `index.html` в браузере. Работа без интернета включается только при открытии
 по адресу `http(s)://`, например: `python3 -m http.server` в папке проекта.
 

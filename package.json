@@ -1,0 +1,20 @@
+{
+  "name": "portfolio-app",
+  "version": "1.1.0",
+  "private": true,
+  "description": "Учёт инвестиционного портфеля: PWA и Android-приложение (Capacitor)",
+  "scripts": {
+    "test": "node tests.js && node proxy/test.mjs",
+    "build:www": "node scripts/build-www.mjs",
+    "android:sync": "npm run build:www && npx cap sync android"
+  },
+  "dependencies": {
+    "@capacitor/android": "8.6.2",
+    "@capacitor/core": "8.6.2",
+    "@capacitor/filesystem": "8.1.5",
+    "@capacitor/share": "8.0.3"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "8.6.2"
+  }
+}
