@@ -54,13 +54,15 @@ await test('/quotes: запрос к брокеру по протоколу v3, 
     const h = init.headers;
     const expected = createHmac('sha256', 's3cret').update(init.body + h['X-NtApi-Timestamp']).digest('hex');
     if (h['X-NtApi-Sig'] !== expected || h['X-NtApi-PublicKey'] !== 'K') return new Response(JSON.stringify({ errMsg: 'Bad sign' }));
-    const t = JSON.parse(init.body).tickers;
-    if (t === 'KCEL.KZ') return new Response(JSON.stringify({ result: { q: [{ c: t, ltp: 2150.5, x_curr: 'KZT', ltr: 'KASE', ltt: '2026-09-28T12:31:00' }] } }));
-    if (t === 'KAP.AIX') return new Response(JSON.stringify({ result: { q: [{ c: t, ltp: 38.2, x_curr: 'USD', ltr: 'AIX' }] } }));
-    if (t === 'T.US') return new Response(JSON.stringify({ result: { q: [{ c: t, ltp: 22.17, x_curr: 'USD', ltr: 'FIX', codesub_nm: 'NYSE' }] } }));
-    if (t === 'T') return new Response(JSON.stringify({ result: { q: [{ c: t, ltp: 293.52, x_curr: 'RUR', ltr: 'MCX' }] } }));
-    if (t === 'KZTKp') return new Response(JSON.stringify({ result: { q: [{ c: t, ltp: 900, x_curr: 'KZT', codesub_nm: 'KASE' }] } }));
-    return new Response(JSON.stringify({ result: { q: [] } }));
+    const db = {
+      'KCEL.KZ': { ltp: 2150.5, x_curr: 'KZT', ltr: 'KASE', ltt: '2026-09-28T12:31:00' },
+      'KAP.AIX': { ltp: 38.2, x_curr: 'USD', ltr: 'AIX' },
+      'T.US': { ltp: 22.17, x_curr: 'USD', ltr: 'FIX', codesub_nm: 'NYSE' },
+      'T': { ltp: 293.52, x_curr: 'RUR', ltr: 'MCX' },
+      'KZTKp': { ltp: 900, x_curr: 'KZT', codesub_nm: 'KASE' }
+    };
+    const list = JSON.parse(init.body).tickers.split(',');
+    return new Response(JSON.stringify({ result: { q: list.filter(t => db[t]).map(t => Object.assign({ c: t }, db[t])) } }));
   };
   const r = await handle(req('/quotes?symbols=kase:KCEL,aix:KAP,kase:KZTKp,kase:NOPE,moex:SBER,us:T,kase:T'), env, fetchFn);
   const body = await r.json();
@@ -74,6 +76,7 @@ await test('/quotes: запрос к брокеру по протоколу v3, 
   assert.equal(body.errors['moex:SBER'], 'unknown source');
   assert.equal(calls[0].url, 'https://tradernet.com/api/getStockQuotesJson');
   assert.equal(calls[0].init.method, 'POST');
+  assert.ok(calls.length <= 6, 'пакетные запросы: не больше двух на площадку, а не по одному на тикер');
 });
 
 await test('/raw разрешает только команды котировок', async () => {

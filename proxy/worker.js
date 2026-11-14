@@ -59,15 +59,10 @@ export async function handle(request, env, fetchFn) {
     if (url.pathname === '/quotes') {
       const symbols = (url.searchParams.get('symbols') || '').split(',').map(s => s.trim()).filter(Boolean).slice(0, 60);
       if (!symbols.length) return json({ error: 'symbols required' }, 400);
-      const out = { quotes: [], errors: {} };
-      await Promise.all(symbols.map(async sym => {
-        try {
-          const q = await cached('q:' + sym, () => quote(sym, env, fetchFn));
-          if (q) out.quotes.push(q); else out.errors[sym] = 'not found';
-        } catch (e) {
-          out.errors[sym] = String(e && e.message || e);
-        }
-      }));
+      // один кэш на весь набор тикеров и пакетные запросы к брокеру: у бесплатного Cloudflare
+      // не больше 50 исходящих запросов на один вызов воркера
+      const key = 'qs:' + symbols.slice().sort().join(',');
+      const out = await cached(key, () => quotesBatch(symbols, env, fetchFn));
       return json(out);
     }
     if (url.pathname === '/raw') {
@@ -75,7 +70,7 @@ export async function handle(request, env, fetchFn) {
       const cmd = url.searchParams.get('cmd') || 'getStockQuotesJson';
       if (!RAW_CMDS[cmd]) return json({ error: 'command not allowed' }, 400);
       const ticker = (url.searchParams.get('ticker') || '').trim();
-      if (!/^[A-Za-z0-9_.\-]{1,24}$/.test(ticker)) return json({ error: 'bad ticker' }, 400);
+      if (!/^[A-Za-z0-9_.\-]{1,24}(,[A-Za-z0-9_.\-]{1,24}){0,59}$/.test(ticker)) return json({ error: 'bad ticker' }, 400);
       if (!env.TN_API_KEY || !env.TN_SECRET) return json({ error: 'source not configured' }, 400);
       return json(await tradernet(cmd, RAW_CMDS[cmd](ticker), env, fetchFn));
     }
@@ -95,7 +90,7 @@ async function cached(key, fn) {
     if (hit) return hit.json();
   }
   const value = await fn();
-  if (cache && value) {
+  if (cache && value && !value.noCache) {
     await cache.put(req, new Response(JSON.stringify(value), { headers: { 'Cache-Control': 'max-age=' + CACHE_SECONDS } }));
   }
   return value;
@@ -115,27 +110,59 @@ const MARKETS = {
   us: { suffix: '.US', env: 'TN_SUFFIX_US', accept: q => /USD/i.test(String(q.x_curr || q.curr || '')) && !/MCX|MOEX|SPB/i.test(String(q.ltr || '')) }
 };
 
-async function quote(sym, env, fetchFn) {
-  const i = sym.indexOf(':');
-  const source = sym.slice(0, i), ticker = sym.slice(i + 1);
-  if (i < 1 || !/^[A-Za-z0-9_.\-]{1,24}$/.test(ticker)) throw new Error('bad symbol');
-  const market = MARKETS[source];
-  if (!market) throw new Error('unknown source');
-  if (!env.TN_API_KEY || !env.TN_SECRET) throw new Error('source not configured');
-  const sfx = env[market.env] != null ? env[market.env] : market.suffix;
-  // сначала тикер с суффиксом биржи, затем как есть; котировка принимается, только если она с нужной биржи
-  // (иначе «T» без суффикса находит одноимённую бумагу Мосбиржи в рублях)
-  const variants = ticker.includes('.') ? [ticker] : [ticker + sfx, ticker];
-  let lastErr = null;
-  for (const t of variants) {
-    try {
-      const d = await tradernet('getStockQuotesJson', { tickers: t }, env, fetchFn);
-      const q = parseTradernetQuote(sym, d, market.accept);
-      if (q) return q;
-    } catch (e) { lastErr = e; }
+async function quotesBatch(symbols, env, fetchFn) {
+  const out = { quotes: [], errors: {} };
+  const groups = {};
+  for (const sym of symbols) {
+    const i = sym.indexOf(':');
+    const source = sym.slice(0, i), ticker = sym.slice(i + 1);
+    if (i < 1 || !/^[A-Za-z0-9_.\-]{1,24}$/.test(ticker)) { out.errors[sym] = 'bad symbol'; continue; }
+    if (!MARKETS[source]) { out.errors[sym] = 'unknown source'; continue; }
+    if (!env.TN_API_KEY || !env.TN_SECRET) { out.errors[sym] = 'source not configured'; continue; }
+    (groups[source] = groups[source] || []).push({ sym, ticker });
   }
-  if (lastErr) throw lastErr;
-  return null;
+  await Promise.all(Object.keys(groups).map(async source => {
+    const market = MARKETS[source];
+    const sfx = env[market.env] != null ? env[market.env] : market.suffix;
+    let pending = groups[source];
+    // сначала тикеры с суффиксом биржи, затем ненайденные — как есть; котировка принимается,
+    // только если она с нужной биржи (иначе «T» без суффикса находит бумагу Мосбиржи в рублях)
+    for (const withSuffix of [true, false]) {
+      if (!pending.length) break;
+      const name = x => withSuffix && !x.ticker.includes('.') ? x.ticker + sfx : x.ticker;
+      const list = withSuffix ? pending : pending.filter(x => !x.ticker.includes('.'));
+      if (!list.length) break;
+      let found;
+      try {
+        const d = await tradernet('getStockQuotesJson', { tickers: list.map(name).join(',') }, env, fetchFn);
+        if (d && (d.errMsg || d.error)) throw new Error(String(d.errMsg || d.error));
+        found = {};
+        quoteList(d).forEach(q => { if (q && q.c != null) found[String(q.c).toUpperCase()] = q; });
+      } catch (e) {
+        list.forEach(x => { out.errors[x.sym] = String(e && e.message || e); });
+        Object.defineProperty(out, 'noCache', { value: true }); // сбой брокера не кэшируем
+        pending = [];
+        break;
+      }
+      const next = [];
+      for (const x of list) {
+        const q = found[name(x).toUpperCase()];
+        const r = q ? parseTradernetQuote(x.sym, q, market.accept) : null;
+        if (r) out.quotes.push(r); else next.push(x);
+      }
+      pending = next;
+    }
+    pending.forEach(x => { if (!out.errors[x.sym]) out.errors[x.sym] = 'not found'; });
+  }));
+  return out;
+}
+
+// все объекты котировок из ответа: {result:{q:[…]}}, {q:[…]}, […] или один объект
+function quoteList(d) {
+  if (!d || typeof d !== 'object') return [];
+  if (Array.isArray(d)) return d.filter(x => x && typeof x === 'object');
+  for (const k of ['result', 'q', 'quotes', 'data']) if (d[k] != null) { const r = quoteList(d[k]); if (r.length) return r; }
+  return d.c != null || d.ltp != null ? [d] : [];
 }
 
 // ищет в ответе объект котировки: {result:{q:[…]}}, {q:[…]}, [ … ] или сам объект
