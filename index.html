@@ -1008,7 +1008,7 @@ const sourceLabel = s => QT.SOURCE_LABELS[s] || s || '';
 function priceMeta(asset, pr) {
   if (!pr) return 'Цена не загружена';
   const today = pr.date === C.today();
-  const t = pr.fetchedAt && today ? new Date(pr.fetchedAt).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }) : fdate(pr.date, true);
+  const t = pr.fetchedAt && today ? (pr.time || new Date(pr.fetchedAt).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })) : fdate(pr.date, true) + (pr.time ? ', ' + pr.time : '');
   const stale = pr.source !== 'demo' && QT.isStale(asset, pr, Date.now());
   return esc(sourceLabel(pr.source)) + ' · ' + t + (stale ? ' · <span class="stale">устарела</span>' : '');
 }
@@ -1902,8 +1902,10 @@ const Quotes = {
         fxRate: (f, t) => d.fx.rate(f, t, C.today())
       });
       res.updates.forEach(u => {
-        const list = S.prices[u.assetId] = (S.prices[u.assetId] || []).filter(x => x.date !== u.date);
-        list.push({ date: u.date, price: u.price, source: u.source, fetchedAt: u.fetchedAt });
+        // котировка биржи главнее цены, внесённой вручную или из Excel позже даты последней сделки:
+        // в выходные биржа отдаёт цену пятницы, а импорт в субботу иначе остаётся «последней» ценой
+        const list = S.prices[u.assetId] = (S.prices[u.assetId] || []).filter(x => x.date !== u.date && !(x.source === 'manual' && x.date > u.date));
+        list.push(Object.assign({ date: u.date, price: u.price, source: u.source, fetchedAt: u.fetchedAt }, u.time ? { time: u.time } : {}));
         list.sort((x, y) => x.date < y.date ? -1 : x.date > y.date ? 1 : 0);
       });
       if (res.updates.length) changed = true;
