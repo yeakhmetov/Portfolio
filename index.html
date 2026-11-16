@@ -120,6 +120,7 @@ header.top .acts{display:flex;gap:2px}
 .item .s{font-size:12.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .item .r{text-align:right;flex:none}
 .item .r .t{font-weight:600;font-size:15px}
+.item .s.pnl.up{color:var(--up)}.item .s.pnl.down{color:var(--down)}
 .seg-head{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap}
 .seg-head h2{margin:2px 0 0}
 .seg-sum{text-align:right;margin-left:auto}
@@ -911,6 +912,7 @@ function renderPositions() {
   const sorters = { value: (a, b) => b.valueBase - a.valueBase, pnl: (a, b) => (b.pnlPct || 0) - (a.pnlPct || 0), name: (a, b) => a.asset.ticker.localeCompare(b.asset.ticker) };
   rows.sort(sorters[UI.posSort]);
   const total = rows.reduce((s, r) => s + r.valueBase, 0);
+  const manyAcc = S.accounts.filter(a => !a.archived).length > 1;
   // сегменты по валюте позиции: базовая валюта первой, остальные — по убыванию стоимости
   const segMap = {};
   rows.forEach(r => {
@@ -950,8 +952,8 @@ function renderPositions() {
       <ul class="list" style="margin-top:6px">${g.rows.map(r => `
         <li class="item tap" data-asset="${esc(r.assetId)}" data-account="${esc(r.accountId)}">
           <div class="badge" aria-hidden="true">${tickerBadge(r.asset)}</div>
-          <div class="main kb" tabindex="0" role="button"><div class="t">${esc(r.asset.name)}</div><div class="s num">${C.formatQty(r.qty)} шт · ${esc((d.accounts[r.accountId] || {}).name || '')}${r.hasPrice ? (r.price.source !== 'demo' && QT.isStale(r.asset, r.price, Date.now()) ? ' · <span class="stale">цена устарела</span>' : '') : ' · нет цены'}</div></div>
-          <div class="r"><div class="t num">${money(r.value, r.currency, r.currency === base ? { digits: 0 } : {})}</div><div class="s num ${cls(r.pnl)}">${arrow(r.pnl)}${pct(Math.abs(r.pnlPct || 0))}</div></div>
+          <div class="main kb" tabindex="0" role="button"><div class="t">${esc(r.asset.name)}</div><div class="s num">${C.formatQty(r.qty)} шт · <span title="Доля в портфеле">доля ${pct(d.sum.total ? r.valueBase / d.sum.total : 0)}</span>${manyAcc ? ' · ' + esc((d.accounts[r.accountId] || {}).name || '') : ''}${r.hasPrice ? (r.price.source !== 'demo' && QT.isStale(r.asset, r.price, Date.now()) ? ' · <span class="stale">цена устарела</span>' : '') : ' · нет цены'}</div></div>
+          <div class="r"><div class="t num">${money(r.value, r.currency, r.currency === base ? { digits: 0 } : {})}</div><div class="s num pnl ${cls(r.pnl)}">${pct(r.pnlPct || 0, true)}</div></div>
         </li>`).join('')}</ul>
     </section>`).join('')}
     ${rows.length ? '' : '<div class="card"><div class="empty">Нет позиций по выбранным фильтрам</div></div>'}
